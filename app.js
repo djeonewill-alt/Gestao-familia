@@ -34,6 +34,7 @@
             cartoes: [],
             cardItems: [],
             cardRecurringItems: [],
+            cashRecurringItems: [],
             cardInvoices: [],
             decisionScenarios: [],
             transacoes: [],
@@ -49,6 +50,7 @@
             setDefaultDates();
             updateAllSelects();
             updateCardItemForm();
+            generateCashRecurringTransactions({ daysAhead: 90, silent: true });
             gerarLancamentosFaturasAutomatico();
             updateSemanal();
             updateMercado();
@@ -56,6 +58,7 @@
             renderResponsaveis();
             renderCartoes();
             renderCardRecurringItems();
+            renderCashRecurringItems();
             loadMetasReservas();
         }
 
@@ -77,6 +80,8 @@
             document.getElementById('dinheiroData').value = today;
             document.getElementById('cartaoData').value = today;
             document.getElementById('simData').value = today;
+            const cashRecurringStartDate = document.getElementById('cashRecurringStartDate');
+            if (cashRecurringStartDate) cashRecurringStartDate.value = today;
             const cardItemDate = document.getElementById('cardItemPurchaseDate');
             if (cardItemDate) cardItemDate.value = today;
             const cardItemFirstInvoiceMonth = document.getElementById('cardItemFirstInvoiceMonth');
@@ -138,6 +143,48 @@
             return transaction;
         }
 
+        function normalizeCashRecurringItem(item) {
+            const now = new Date().toISOString();
+            const safeItem = item && typeof item === 'object' ? { ...item } : {};
+            const today = typeof getTodayDateString === 'function'
+                ? getTodayDateString()
+                : new Date().toISOString().split('T')[0];
+            const frequency = ['weekly', 'monthly'].includes(safeItem.frequency) ? safeItem.frequency : 'weekly';
+            const status = ['active', 'paused', 'cancelled'].includes(safeItem.status) ? safeItem.status : 'active';
+            const amount = Number(safeItem.amount);
+            const interval = Math.max(1, parseInt(safeItem.interval, 10) || 1);
+            const startDate = /^\d{4}-\d{2}-\d{2}$/.test(String(safeItem.startDate || '')) ? safeItem.startDate : today;
+            const startDateObj = new Date(startDate + 'T12:00:00');
+            const defaultDayOfWeek = Number.isNaN(startDateObj.getTime()) ? 1 : startDateObj.getDay();
+            const defaultDayOfMonth = Number.isNaN(startDateObj.getTime()) ? 1 : startDateObj.getDate();
+            const parsedDayOfWeek = parseInt(safeItem.dayOfWeek, 10);
+            const parsedDayOfMonth = parseInt(safeItem.dayOfMonth, 10);
+
+            return {
+                ...safeItem,
+                id: safeItem.id || Date.now() + Math.random(),
+                type: 'cash',
+                subTipo: safeItem.subTipo === 'entrada' ? 'entrada' : 'saida',
+                description: safeItem.description || safeItem.descricao || 'Recorrencia de dinheiro',
+                category: safeItem.category || safeItem.categoria || 'Outros',
+                responsible: safeItem.responsible || safeItem.responsavel || 'Meu',
+                amount: Number.isFinite(amount) && amount > 0 ? amount : 0,
+                frequency,
+                interval,
+                startDate,
+                endDate: /^\d{4}-\d{2}-\d{2}$/.test(String(safeItem.endDate || '')) ? safeItem.endDate : null,
+                dayOfWeek: Number.isInteger(parsedDayOfWeek) && parsedDayOfWeek >= 0 && parsedDayOfWeek <= 6 ? parsedDayOfWeek : defaultDayOfWeek,
+                dayOfMonth: Number.isInteger(parsedDayOfMonth) && parsedDayOfMonth >= 1 && parsedDayOfMonth <= 31 ? parsedDayOfMonth : defaultDayOfMonth,
+                accountId: safeItem.accountId || 'conta-principal',
+                status,
+                createdAt: safeItem.createdAt || now,
+                updatedAt: safeItem.updatedAt || now,
+                pausedAt: safeItem.pausedAt || null,
+                cancelledAt: safeItem.cancelledAt || null,
+                lastGeneratedUntil: safeItem.lastGeneratedUntil || null,
+                origem: 'recorrencia-dinheiro'
+            };
+        }
         function migrateDataToCurrentSchema(loadedData) {
             if (!loadedData || typeof loadedData !== 'object' || Array.isArray(loadedData)) {
                 return data;
@@ -162,6 +209,9 @@
             if (!Array.isArray(migrated.cartoes)) migrated.cartoes = [];
             if (!Array.isArray(migrated.cardItems)) migrated.cardItems = [];
             if (!Array.isArray(migrated.cardRecurringItems)) migrated.cardRecurringItems = [];
+            migrated.cashRecurringItems = Array.isArray(migrated.cashRecurringItems)
+                ? migrated.cashRecurringItems.map(normalizeCashRecurringItem)
+                : [];
             migrated.cardRecurringItems = migrated.cardRecurringItems.map(item => {
                 const now = new Date().toISOString();
                 const recurringItem = item && typeof item === 'object' ? item : {};
@@ -342,6 +392,10 @@ return migrated;
             }
 
             return 'previsto';
+        }
+
+        function getRecurringCashBadgeHtml(t) {
+            return t && t.origem === 'recorrencia-dinheiro' ? '<span class="badge recurring">Recorrencia</span>' : '';
         }
 
         function getStatusBadgeHtml(t) {
@@ -1099,6 +1153,399 @@ function getFirstInvoiceMonthForPurchase(card, purchaseDate) {
             document.getElementById('formCartao').style.display = tipo === 'cartao' ? 'block' : 'none';
         }
 
+
+        // ========== RECORRENCIAS DE DINHEIRO ==========
+        function getDateString(date) {
+            if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null;
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function parseDateStringSafe(dateStr) {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateStr || ''))) return null;
+            const date = new Date(dateStr + 'T12:00:00');
+            return Number.isNaN(date.getTime()) ? null : date;
+        }
+
+        function addDaysToDateString(dateStr, days) {
+            const date = parseDateStringSafe(dateStr);
+            if (!date) return null;
+            date.setDate(date.getDate() + (Number(days) || 0));
+            return getDateString(date);
+        }
+
+        function addMonthsToDateString(dateStr, months) {
+            const date = parseDateStringSafe(dateStr);
+            if (!date) return null;
+            const wantedDay = date.getDate();
+            const target = new Date(date.getFullYear(), date.getMonth() + (Number(months) || 0), 1, 12, 0, 0, 0);
+            const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+            target.setDate(Math.min(wantedDay, lastDay));
+            return getDateString(target);
+        }
+
+        function getCashRecurringGenerationEndDate(daysAhead = 90) {
+            return addDaysToDateString(getTodayDateString(), Math.max(1, Number(daysAhead) || 90));
+        }
+
+        function getLastDayOfMonth(year, monthIndex) {
+            return new Date(year, monthIndex + 1, 0).getDate();
+        }
+
+        function getMonthlyOccurrenceDate(year, monthIndex, dayOfMonth) {
+            const day = Math.min(Math.max(1, Number(dayOfMonth) || 1), getLastDayOfMonth(year, monthIndex));
+            return getDateString(new Date(year, monthIndex, day, 12, 0, 0, 0));
+        }
+
+        function getCashRecurringOccurrences(template, untilDate) {
+            const item = normalizeCashRecurringItem(template);
+            if (item.status !== 'active') return [];
+
+            const todayStr = getTodayDateString();
+            const startDate = parseDateStringSafe(item.startDate);
+            const until = parseDateStringSafe(untilDate || getCashRecurringGenerationEndDate());
+            if (!startDate || !until) return [];
+
+            const effectiveStartStr = item.startDate > todayStr ? item.startDate : todayStr;
+            const effectiveStart = parseDateStringSafe(effectiveStartStr);
+            const endDate = item.endDate ? parseDateStringSafe(item.endDate) : null;
+            const finalDate = endDate && endDate < until ? endDate : until;
+            if (!effectiveStart || effectiveStart > finalDate) return [];
+
+            const occurrences = [];
+            const interval = Math.max(1, Number(item.interval) || 1);
+
+            if (item.frequency === 'weekly') {
+                const targetDay = Number.isInteger(item.dayOfWeek) ? item.dayOfWeek : startDate.getDay();
+                let cursor = new Date(startDate);
+                const diff = (targetDay - cursor.getDay() + 7) % 7;
+                cursor.setDate(cursor.getDate() + diff);
+
+                while (cursor < effectiveStart) {
+                    cursor.setDate(cursor.getDate() + (7 * interval));
+                }
+
+                while (cursor <= finalDate) {
+                    occurrences.push(getDateString(cursor));
+                    cursor.setDate(cursor.getDate() + (7 * interval));
+                }
+            }
+
+            if (item.frequency === 'monthly') {
+                const dayOfMonth = item.dayOfMonth || startDate.getDate();
+                let monthCursor = new Date(startDate.getFullYear(), startDate.getMonth(), 1, 12, 0, 0, 0);
+                let occurrence = parseDateStringSafe(getMonthlyOccurrenceDate(monthCursor.getFullYear(), monthCursor.getMonth(), dayOfMonth));
+
+                while (occurrence && occurrence < startDate) {
+                    monthCursor.setMonth(monthCursor.getMonth() + interval);
+                    occurrence = parseDateStringSafe(getMonthlyOccurrenceDate(monthCursor.getFullYear(), monthCursor.getMonth(), dayOfMonth));
+                }
+
+                while (occurrence && occurrence < effectiveStart) {
+                    monthCursor.setMonth(monthCursor.getMonth() + interval);
+                    occurrence = parseDateStringSafe(getMonthlyOccurrenceDate(monthCursor.getFullYear(), monthCursor.getMonth(), dayOfMonth));
+                }
+
+                while (occurrence && occurrence <= finalDate) {
+                    occurrences.push(getDateString(occurrence));
+                    monthCursor.setMonth(monthCursor.getMonth() + interval);
+                    occurrence = parseDateStringSafe(getMonthlyOccurrenceDate(monthCursor.getFullYear(), monthCursor.getMonth(), dayOfMonth));
+                }
+            }
+
+            return occurrences.filter(Boolean);
+        }
+
+        function findDuplicateRecurringOccurrence(templateId, occurrenceDate) {
+            if (!Array.isArray(data.transacoes)) return null;
+            return data.transacoes.find(t =>
+                t.origem === 'recorrencia-dinheiro' &&
+                String(t.recurringTemplateId) === String(templateId) &&
+                t.recurringOccurrenceDate === occurrenceDate
+            ) || null;
+        }
+
+        function createTransactionFromCashRecurring(template, occurrenceDate) {
+            const item = normalizeCashRecurringItem(template);
+            const now = new Date().toISOString();
+            return {
+                id: Date.now() + Math.random(),
+                tipo: 'dinheiro',
+                subTipo: item.subTipo,
+                data: occurrenceDate,
+                valor: item.amount,
+                categoria: item.category,
+                responsavel: item.responsible,
+                descricao: item.description,
+                recorrente: true,
+                realizado: false,
+                accountId: item.accountId || 'conta-principal',
+                dataPrevista: occurrenceDate,
+                valorPrevisto: item.amount,
+                status: 'previsto',
+                dataRealizada: null,
+                valorRealizado: null,
+                confirmedAt: null,
+                origem: 'recorrencia-dinheiro',
+                recurringTemplateId: item.id,
+                recurringOccurrenceDate: occurrenceDate,
+                observacao: '',
+                createdAt: now,
+                updatedAt: now
+            };
+        }
+
+        function generateCashRecurringTransactions(options = {}) {
+            const daysAhead = Math.max(1, Number(options.daysAhead) || 90);
+            const silent = options.silent === true;
+            const untilDate = options.untilDate || getCashRecurringGenerationEndDate(daysAhead);
+            const templates = Array.isArray(data.cashRecurringItems) ? data.cashRecurringItems : [];
+            let generated = 0;
+            let skipped = 0;
+            let touched = false;
+
+            templates.forEach((template, index) => {
+                const item = normalizeCashRecurringItem(template);
+                data.cashRecurringItems[index] = item;
+                if (item.status !== 'active' || item.amount <= 0) return;
+
+                const occurrences = getCashRecurringOccurrences(item, untilDate);
+                occurrences.forEach(occurrenceDate => {
+                    if (findDuplicateRecurringOccurrence(item.id, occurrenceDate)) {
+                        skipped++;
+                        return;
+                    }
+                    data.transacoes.push(createTransactionFromCashRecurring(item, occurrenceDate));
+                    generated++;
+                    touched = true;
+                });
+
+                if (!item.lastGeneratedUntil || item.lastGeneratedUntil < untilDate) {
+                    item.lastGeneratedUntil = untilDate;
+                    item.updatedAt = new Date().toISOString();
+                    touched = true;
+                }
+            });
+
+            if (touched) saveData();
+            if (!silent) {
+                alert(`${generated} previsoes geradas. ${skipped} ja existiam.`);
+            }
+            return { generated, skipped, templates: templates.length };
+        }
+
+        function updateCashRecurringForm() {
+            const frequency = document.getElementById('cashRecurringFrequency')?.value || 'weekly';
+            const weeklyGroup = document.getElementById('cashRecurringWeeklyGroup');
+            const monthlyGroup = document.getElementById('cashRecurringMonthlyGroup');
+            if (weeklyGroup) weeklyGroup.style.display = frequency === 'weekly' ? 'block' : 'none';
+            if (monthlyGroup) monthlyGroup.style.display = frequency === 'monthly' ? 'block' : 'none';
+        }
+
+        function buildCashRecurringItemFromForm() {
+            const subTipo = document.getElementById('cashRecurringSubTipo')?.value || 'saida';
+            const description = document.getElementById('cashRecurringDescription')?.value.trim();
+            const amount = parseCurrencyInput(document.getElementById('cashRecurringAmount')?.value);
+            const category = document.getElementById('cashRecurringCategory')?.value || 'Outros';
+            const responsible = document.getElementById('cashRecurringResponsible')?.value || 'Meu';
+            const frequency = document.getElementById('cashRecurringFrequency')?.value || 'weekly';
+            const dayOfWeek = parseInt(document.getElementById('cashRecurringDayOfWeek')?.value, 10);
+            const dayOfMonth = parseInt(document.getElementById('cashRecurringDayOfMonth')?.value, 10);
+            const startDate = document.getElementById('cashRecurringStartDate')?.value;
+            const endDate = document.getElementById('cashRecurringEndDate')?.value || null;
+
+            if (!['entrada', 'saida'].includes(subTipo)) return { error: 'Tipo invalido.' };
+            if (!description) return { error: 'Informe a descricao.' };
+            if (!Number.isFinite(amount) || amount <= 0) return { error: 'Informe um valor valido.' };
+            if (!['weekly', 'monthly'].includes(frequency)) return { error: 'Frequencia invalida.' };
+            if (!startDate) return { error: 'Informe a data inicial.' };
+            if (frequency === 'weekly' && (!Number.isInteger(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6)) return { error: 'Informe o dia da semana.' };
+            if (frequency === 'monthly' && (!Number.isInteger(dayOfMonth) || dayOfMonth < 1 || dayOfMonth > 31)) return { error: 'Informe um dia do mes entre 1 e 31.' };
+            if (endDate && endDate < startDate) return { error: 'Data final nao pode ser anterior a data inicial.' };
+
+            const now = new Date().toISOString();
+            return {
+                item: normalizeCashRecurringItem({
+                    id: Date.now() + Math.random(),
+                    type: 'cash',
+                    subTipo,
+                    description,
+                    category,
+                    responsible,
+                    amount,
+                    frequency,
+                    interval: 1,
+                    startDate,
+                    endDate,
+                    dayOfWeek: frequency === 'weekly' ? dayOfWeek : null,
+                    dayOfMonth: frequency === 'monthly' ? dayOfMonth : null,
+                    accountId: 'conta-principal',
+                    status: 'active',
+                    createdAt: now,
+                    updatedAt: now,
+                    origem: 'recorrencia-dinheiro'
+                })
+            };
+        }
+
+        function resetCashRecurringForm() {
+            const description = document.getElementById('cashRecurringDescription');
+            const amount = document.getElementById('cashRecurringAmount');
+            const endDate = document.getElementById('cashRecurringEndDate');
+            if (description) description.value = '';
+            if (amount) amount.value = '';
+            if (endDate) endDate.value = '';
+            const startDate = document.getElementById('cashRecurringStartDate');
+            if (startDate) startDate.value = getTodayDateString();
+        }
+
+        function addCashRecurringItem() {
+            const result = buildCashRecurringItemFromForm();
+            if (result.error) return alert(result.error);
+
+            data.cashRecurringItems = Array.isArray(data.cashRecurringItems) ? data.cashRecurringItems : [];
+            data.cashRecurringItems.push(result.item);
+            saveData();
+            const generation = generateCashRecurringTransactions({ daysAhead: 90, silent: true });
+            updateSemanal();
+            renderTodasTransacoes();
+            renderCashRecurringItems();
+            resetCashRecurringForm();
+            alert(`Recorrencia salva. ${generation.generated} previsoes geradas.`);
+        }
+
+        function generateCashRecurringTransactionsFromUI() {
+            const generation = generateCashRecurringTransactions({ daysAhead: 90, silent: false });
+            updateSemanal();
+            renderTodasTransacoes();
+            renderCashRecurringItems();
+            return generation;
+        }
+
+        function getCashRecurringStatusLabel(item) {
+            if (item.status === 'paused') return 'Pausada';
+            if (item.status === 'cancelled') return 'Cancelada';
+            return 'Ativa';
+        }
+
+        function getCashRecurringFrequencyLabel(item) {
+            if (item.frequency === 'monthly') return `Mensal, dia ${item.dayOfMonth}`;
+            const days = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado'];
+            return `Semanal, ${days[item.dayOfWeek] || 'dia definido'}`;
+        }
+
+        function renderCashRecurringItems() {
+            const container = document.getElementById('cashRecurringList');
+            if (!container) return;
+            const items = Array.isArray(data.cashRecurringItems) ? data.cashRecurringItems : [];
+
+            if (items.length === 0) {
+                container.innerHTML = '<div class="empty-state">Nenhuma recorrencia de dinheiro cadastrada.</div>';
+                return;
+            }
+
+            container.innerHTML = items.map(item => {
+                const normalized = normalizeCashRecurringItem(item);
+                const isActive = normalized.status === 'active';
+                const isPaused = normalized.status === 'paused';
+                const statusClass = normalized.status === 'cancelled' ? 'status-planejado' : 'status-realizado';
+                const actions = normalized.status === 'cancelled'
+                    ? ''
+                    : `
+                        ${isActive ? `<button class="secondary" onclick="pauseCashRecurringItem('${String(normalized.id)}')">Pausar</button>` : ''}
+                        ${isPaused ? `<button class="success" onclick="reactivateCashRecurringItem('${String(normalized.id)}')">Reativar</button>` : ''}
+                        <button class="danger" onclick="cancelCashRecurringItem('${String(normalized.id)}')">Cancelar</button>
+                    `;
+
+                return `
+                    <div class="transaction-item cash-recurring-item">
+                        <div class="transaction-info">
+                            <div class="transaction-description">
+                                ${normalized.description}
+                                <span class="badge cat">${normalized.category}</span>
+                                <span class="badge resp">${normalized.responsible}</span>
+                                <span class="badge ${statusClass}">${getCashRecurringStatusLabel(normalized)}</span>
+                            </div>
+                            <div class="transaction-meta">${getCashRecurringFrequencyLabel(normalized)} - inicio ${formatDate(normalized.startDate)}${normalized.endDate ? ' - fim ' + formatDate(normalized.endDate) : ''}</div>
+                        </div>
+                        <div class="cash-recurring-actions">
+                            <div class="transaction-amount ${normalized.subTipo === 'entrada' ? 'income' : 'expense'}">
+                                ${normalized.subTipo === 'entrada' ? '+' : '-'} ${formatCurrency(normalized.amount)}
+                            </div>
+                            <div class="cash-recurring-buttons">${actions}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function pauseCashRecurringItem(id) {
+            const item = (data.cashRecurringItems || []).find(r => String(r.id) === String(id));
+            if (!item) return alert('Recorrencia nao encontrada.');
+            item.status = 'paused';
+            item.pausedAt = new Date().toISOString();
+            item.updatedAt = new Date().toISOString();
+            saveData();
+            renderCashRecurringItems();
+            alert('Recorrencia pausada. Lancamentos ja gerados foram preservados.');
+        }
+
+        function reactivateCashRecurringItem(id) {
+            const item = (data.cashRecurringItems || []).find(r => String(r.id) === String(id));
+            if (!item) return alert('Recorrencia nao encontrada.');
+            item.status = 'active';
+            item.pausedAt = null;
+            item.updatedAt = new Date().toISOString();
+            saveData();
+            const generation = generateCashRecurringTransactions({ daysAhead: 90, silent: true });
+            updateSemanal();
+            renderCashRecurringItems();
+            alert(`Recorrencia reativada. ${generation.generated} previsoes geradas.`);
+        }
+
+        function cancelFuturePredictedCashRecurringTransactions(templateId) {
+            const today = getTodayDateString();
+            let cancelled = 0;
+            data.transacoes.forEach(t => {
+                if (t.origem !== 'recorrencia-dinheiro') return;
+                if (String(t.recurringTemplateId) !== String(templateId)) return;
+                if (isTransactionConfirmed(t)) return;
+                if (isTransactionCancelled(t)) return;
+                const plannedDate = getTransactionPlannedDate(t);
+                if (plannedDate && plannedDate >= today) {
+                    t.status = 'cancelado';
+                    t.realizado = false;
+                    t.updatedAt = new Date().toISOString();
+                    cancelled++;
+                }
+            });
+            return cancelled;
+        }
+
+        function cancelCashRecurringItem(id) {
+            const item = (data.cashRecurringItems || []).find(r => String(r.id) === String(id));
+            if (!item) return alert('Recorrencia nao encontrada.');
+            if (item.status === 'cancelled') return alert('Esta recorrencia ja foi cancelada.');
+            if (!confirm('Cancelar esta recorrencia? Lancamentos confirmados serao preservados.')) return;
+
+            item.status = 'cancelled';
+            item.cancelledAt = new Date().toISOString();
+            item.updatedAt = new Date().toISOString();
+
+            let cancelled = 0;
+            if (confirm('Cancelar tambem previsoes futuras ainda nao baixadas desta recorrencia?')) {
+                cancelled = cancelFuturePredictedCashRecurringTransactions(item.id);
+            }
+
+            saveData();
+            updateSemanal();
+            renderTodasTransacoes();
+            renderCashRecurringItems();
+            alert(`Recorrencia cancelada. ${cancelled} previsoes futuras foram canceladas.`);
+        }
+
         function addLancamentoDinheiro() {
             const tipo = document.getElementById('dinheiroTipo').value;
             const data_lancamento = document.getElementById('dinheiroData').value;
@@ -1279,6 +1726,7 @@ function getFirstInvoiceMonthForPurchase(card, purchaseDate) {
                                     <span class="badge cat">${t.categoria}</span>
                                     <span class="badge resp">${t.responsavel}</span>
                                     ${statusBadge}
+                                    ${getRecurringCashBadgeHtml(t)}
                                 </div>
                                 <div class="transaction-meta">${formatDate(dataExibicao || t.data)}</div>
                             </div>
@@ -1441,6 +1889,7 @@ function getFirstInvoiceMonthForPurchase(card, purchaseDate) {
                                 ${t.descricao}
                                 <span class="badge cat">${t.categoria}</span>
                                 ${statusBadge}
+                                ${getRecurringCashBadgeHtml(t)}
                             </div>
                             <div class="transaction-meta">${formatDate(dataExibicao || t.data)} - ${t.responsavel}</div>
                         </div>
@@ -2496,12 +2945,12 @@ function gerarLancamentoPagamentoFatura(cartaoId, mesRef) {
             const responsaveisHTML = data.responsaveis.map(r => `<option value="${r}">${r}</option>`).join('');
             const cartoesHTML = data.cartoes.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
 
-            ['dinheiroCategoria', 'cartaoCategoria', 'cardItemCategory'].forEach(id => {
+            ['dinheiroCategoria', 'cartaoCategoria', 'cardItemCategory', 'cashRecurringCategory'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.innerHTML = categoriasHTML;
             });
 
-            ['dinheiroResponsavel', 'cartaoResponsavel', 'cardItemResponsible'].forEach(id => {
+            ['dinheiroResponsavel', 'cartaoResponsavel', 'cardItemResponsible', 'cashRecurringResponsible'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.innerHTML = responsaveisHTML;
             });
@@ -2536,6 +2985,7 @@ function runDataHealthCheck() {
             transacoes: Array.isArray(data.transacoes) ? data.transacoes.length : 0,
             cardItems: Array.isArray(data.cardItems) ? data.cardItems.length : 0,
             cardRecurringItems: Array.isArray(data.cardRecurringItems) ? data.cardRecurringItems.length : 0,
+            cashRecurringItems: Array.isArray(data.cashRecurringItems) ? data.cashRecurringItems.length : 0,
             cardInvoices: Array.isArray(data.cardInvoices) ? data.cardInvoices.length : 0
         },
         issues,
@@ -2620,6 +3070,10 @@ function runDataHealthCheck() {
                 warnings.push(`Recorrente cancelada sem endInvoiceMonth: ${label}`);
             }
         });
+    }
+
+    if (!Array.isArray(data.cashRecurringItems)) {
+        issues.push('data.cashRecurringItems nao e um array.');
     }
 
     if (!Array.isArray(data.cardInvoices)) {
@@ -3294,50 +3748,56 @@ const trainingSteps = [
         action: 'Use tipo Saída e lance com a data prevista de pagamento.'
     },
     {
+        id: 'recorrencias-dinheiro',
+        title: '4. Configurar recorrencias de dinheiro',
+        area: 'Lancamentos',
+        description: 'Use recorrencias para pao, carne, verdura, aluguel, internet, salario e comissoes fixas. O app cria previsoes, mas nada e pago automaticamente.',
+        action: 'Va em Lancamentos > Recorrencias de dinheiro, cadastre a regra e gere previsoes. Quando acontecer, use Dar baixa.'
+    },    {
         id: 'baixa',
-        title: '4. Dar baixa no que realmente aconteceu',
+        title: '5. Dar baixa no que realmente aconteceu',
         area: 'Visão Semanal / Lançamentos',
         description: 'Nada vira real apenas porque a data passou. Você confirma manualmente o que entrou ou saiu.',
         action: 'Clique em Dar baixa, informe valor real, data real e observação se necessário.'
     },
     {
         id: 'cartoes',
-        title: '5. Cadastrar cartões e lançar itens de fatura',
+        title: '6. Cadastrar cartões e lançar itens de fatura',
         area: 'Cartões',
         description: 'Cadastre seus cartões e lance compras à vista, parceladas, parcelas já em andamento e recorrentes.',
         action: 'Vá em Cartões, cadastre o cartão e use Adicionar item na fatura.'
     },
     {
         id: 'faturas',
-        title: '6. Conferir faturas mensais',
+        title: '7. Conferir faturas mensais',
         area: 'Cartões',
         description: 'A fatura mostra compras antigas, itens novos, recorrentes, total geral e subtotal por responsável.',
         action: 'Escolha o mês da fatura e confira os itens. Marque como aberta, fechada ou paga conforme o caso.'
     },
     {
         id: 'pagamento-fatura',
-        title: '7. Gerar e baixar pagamento da fatura',
+        title: '8. Gerar e baixar pagamento da fatura',
         area: 'Cartões / Lançamentos',
         description: 'O cartão não sai direto do caixa. Quem entra no fluxo semanal é o pagamento da fatura.',
         action: 'Gere o pagamento da fatura, depois vá em Lançamentos ou Visão Semanal e dê baixa quando pagar de verdade.'
     },
     {
         id: 'mercado',
-        title: '8. Usar lista de mercado',
+        title: '9. Usar lista de mercado',
         area: 'Mercado',
         description: 'Monte sua lista semanal de compras e acompanhe histórico de preços.',
         action: 'Vá em Mercado, adicione produto, quantidade e preço estimado.'
     },
     {
         id: 'simulador',
-        title: '9. Simular decisão financeira',
+        title: '10. Simular decisão financeira',
         area: 'Simulador',
         description: 'Use o simulador para avaliar saída de emprego, renda temporária, faturas futuras e necessidade de nova renda.',
         action: 'Vá em Simulador, clique em Preencher com dados atuais, ajuste os valores e simule.'
     },
     {
         id: 'backup',
-        title: '10. Exportar e criar backup',
+        title: '11. Exportar e criar backup',
         area: 'Configurações',
         description: 'Como os dados ficam no navegador, exportar e criar backup é essencial.',
         action: 'Vá em Configurações > Dados e use Exportar Dados ou Backup Manual.'
@@ -4824,6 +5284,8 @@ const CONTEXT_HELP_CONTENT = {
             'Use Entrada para salário, comissão, pix recebido e outras rendas.',
             'Use Saída para aluguel, contas, mercado e compromissos.',
             'Lançamentos novos nascem como previstos.',
+            'Use Recorrencias de dinheiro para despesas ou entradas que se repetem.',
+            'Recorrencias criam previsoes futuras, mas voce ainda da baixa manualmente.',
             'Clique em Dar baixa para confirmar valor e data reais.'
         ],
         trainingId: 'entradas-saidas'

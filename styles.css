@@ -2153,3 +2153,41 @@ body[data-current-page="configuracoes"] #configuracoes.page.active {
         width: 100%;
     }
 }
+
+.badge.recurring {
+    background: #8e44ad;
+    color: #fff;
+}
+
+.cash-recurring-note {
+    color: #7f8c8d;
+    margin-bottom: 16px;
+    max-width: 760px;
+}
+
+.cash-recurring-toolbar,
+.cash-recurring-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.cash-recurring-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.cash-recurring-item .transaction-meta {
+    margin-top: 4px;
+}
+
+@media (max-width: 768px) {
+    .cash-recurring-actions {
+        justify-content: flex-start;
+        width: 100%;
+    }
+}
