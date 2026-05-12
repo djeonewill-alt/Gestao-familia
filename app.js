@@ -5609,3 +5609,126 @@ if (typeof showPage === 'function' && !window.__showPageSafeBackupWrapped) {
 window.addEventListener('load', function() {
     ensureSafeBackupPanel();
 });
+
+
+/* PATCH 30A — CARTAO SOMENTE NA ABA CARTOES */
+function hideLegacyCreditCardLauncher() {
+    const lancamentosPage = document.getElementById('lancamentos');
+    if (!lancamentosPage) return;
+
+    if (!document.getElementById('cardLauncherNotice')) {
+        const notice = document.createElement('div');
+        notice.id = 'cardLauncherNotice';
+        notice.className = 'card-launcher-notice';
+        notice.innerHTML = `
+            <strong>Cartão de crédito agora fica separado</strong>
+            Compras no cartão devem ser lançadas em <b>Cartões &gt; Adicionar item na fatura</b>.
+            A tela de Lançamentos fica apenas para entradas, saídas em dinheiro/pix/débito e recorrências de dinheiro.
+            <br>
+            <button class="secondary" onclick="showPage('cartoes')">Ir para Cartões</button>
+        `;
+
+        const firstSection = lancamentosPage.querySelector('.section');
+        if (firstSection) {
+            firstSection.insertBefore(notice, firstSection.firstChild);
+        } else {
+            lancamentosPage.insertBefore(notice, lancamentosPage.firstChild);
+        }
+    }
+
+    const selects = Array.from(lancamentosPage.querySelectorAll('select'));
+
+    selects.forEach(select => {
+        const options = Array.from(select.options || []);
+
+        options.forEach(option => {
+            const value = String(option.value || '').toLowerCase();
+            const text = String(option.textContent || '').toLowerCase();
+
+            const isCreditCardOption =
+                value.includes('cartao') ||
+                value.includes('cartão') ||
+                text.includes('cartão') ||
+                text.includes('cartao') ||
+                text.includes('crédito') ||
+                text.includes('credito');
+
+            if (!isCreditCardOption) return;
+
+            option.disabled = true;
+            option.hidden = true;
+            option.setAttribute('data-hidden-by-patch-30a', 'true');
+
+            if (select.value === option.value) {
+                const fallback = options.find(opt => {
+                    const optValue = String(opt.value || '').toLowerCase();
+                    const optText = String(opt.textContent || '').toLowerCase();
+
+                    return !opt.disabled &&
+                        !opt.hidden &&
+                        !optValue.includes('cartao') &&
+                        !optValue.includes('cartão') &&
+                        !optText.includes('cartão') &&
+                        !optText.includes('cartao') &&
+                        !optText.includes('crédito') &&
+                        !optText.includes('credito');
+                });
+
+                if (fallback) {
+                    select.value = fallback.value;
+                    select.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+        });
+    });
+
+    // Se algum bloco antigo de campos do cartão estiver visível em Lançamentos, esconda visualmente.
+    const possibleCardBlocks = Array.from(lancamentosPage.querySelectorAll('[id], .form-group, .section, div'));
+
+    possibleCardBlocks.forEach(el => {
+        const text = String(el.textContent || '').toLowerCase();
+        const id = String(el.id || '').toLowerCase();
+
+        const looksLikeLegacyCardBlock =
+            id.includes('cartao') ||
+            id.includes('cartão') ||
+            (
+                text.includes('cartão de crédito') &&
+                text.includes('parcelas') &&
+                text.includes('limite')
+            );
+
+        if (!looksLikeLegacyCardBlock) return;
+
+        // Não esconder a página inteira nem o aviso.
+        if (el.id === 'lancamentos' || el.id === 'cardLauncherNotice') return;
+        if (el.closest('#cardLauncherNotice')) return;
+
+        // Esconde apenas blocos evidentemente antigos de cartão na tela Lançamentos.
+        if (
+            el.classList.contains('form-group') ||
+            el.id.includes('cartao') ||
+            el.id.includes('cartão')
+        ) {
+            el.style.display = 'none';
+            el.setAttribute('data-hidden-by-patch-30a', 'true');
+        }
+    });
+}
+
+if (typeof showPage === 'function' && !window.__showPagePatch30AWrapped) {
+    window.__showPagePatch30AWrapped = true;
+    const originalShowPageBeforePatch30A = showPage;
+
+    showPage = function(pageId) {
+        originalShowPageBeforePatch30A(pageId);
+
+        if (pageId === 'lancamentos') {
+            setTimeout(hideLegacyCreditCardLauncher, 20);
+        }
+    };
+}
+
+window.addEventListener('load', function() {
+    setTimeout(hideLegacyCreditCardLauncher, 80);
+});

@@ -2191,3 +2191,29 @@ body[data-current-page="configuracoes"] #configuracoes.page.active {
         width: 100%;
     }
 }
+
+
+/* PATCH 30A — CARTAO SOMENTE NA ABA CARTOES */
+.card-launcher-notice {
+    margin-bottom: 18px;
+    padding: 14px 16px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(96, 165, 250, 0.24);
+    background:
+        linear-gradient(135deg, rgba(15, 23, 42, 0.76), rgba(15, 28, 48, 0.56)),
+        radial-gradient(circle at top right, rgba(96, 165, 250, 0.10), transparent 32%);
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.card-launcher-notice strong {
+    display: block;
+    color: var(--text-main);
+    margin-bottom: 4px;
+}
+
+.card-launcher-notice button {
+    margin-top: 10px;
+    padding: 8px 12px;
+    font-size: 12px;
+}
