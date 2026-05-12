@@ -832,22 +832,100 @@ function confirmTransaction(id) {
             return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
         }
 
-        function getFirstInvoiceMonthForPurchase(card, purchaseDate) {
-            if (!card || !purchaseDate) return null;
-            const date = new Date(purchaseDate + 'T12:00:00');
-            if (Number.isNaN(date.getTime())) return null;
+        function getInvoicePaymentMonthForPurchase(card, purchaseDate) {
+    const fallbackMonth = new Date().toISOString().slice(0, 7);
 
-            let month = date.getMonth();
-            let year = date.getFullYear();
-            if (date.getDate() > card.diaFechamento) {
-                month++;
-                if (month > 11) {
-                    month = 0;
-                    year++;
-                }
-            }
-            return `${year}-${String(month + 1).padStart(2, '0')}`;
-        }
+    if (!card || !purchaseDate) {
+        return fallbackMonth;
+    }
+
+    const date = new Date(String(purchaseDate) + 'T12:00:00');
+
+    if (Number.isNaN(date.getTime())) {
+        return fallbackMonth;
+    }
+
+    const closingDayRaw = Number(card.diaFechamento);
+    const paymentDayRaw = Number(card.diaPagamento);
+
+    const closingDay = Number.isFinite(closingDayRaw) && closingDayRaw >= 1 && closingDayRaw <= 31
+        ? closingDayRaw
+        : 25;
+
+    const paymentDay = Number.isFinite(paymentDayRaw) && paymentDayRaw >= 1 && paymentDayRaw <= 31
+        ? paymentDayRaw
+        : 1;
+
+    const purchaseDay = date.getDate();
+    const purchaseYear = date.getFullYear();
+    const purchaseMonthIndex = date.getMonth();
+
+    // Regra:
+    // - monthRef representa o mês de PAGAMENTO/VENCIMENTO da fatura.
+    // - Compra no dia do fechamento ou depois entra no próximo ciclo.
+    // - Se o vencimento é antes ou no mesmo dia do fechamento, paga no mês seguinte ao fechamento.
+    const closingMonthOffset = purchaseDay >= closingDay ? 1 : 0;
+    const paymentMonthOffset = paymentDay <= closingDay ? 1 : 0;
+
+    const invoicePaymentDate = new Date(
+        purchaseYear,
+        purchaseMonthIndex + closingMonthOffset + paymentMonthOffset,
+        1
+    );
+
+    const year = invoicePaymentDate.getFullYear();
+    const month = String(invoicePaymentDate.getMonth() + 1).padStart(2, '0');
+
+    return year + '-' + month;
+}
+
+function getInvoiceCycleRangeForPaymentMonth(card, monthRef) {
+    const normalizedMonth = normalizeMonthRef(monthRef);
+    if (!card || !normalizedMonth) return null;
+
+    const closingDayRaw = Number(card.diaFechamento);
+    const paymentDayRaw = Number(card.diaPagamento);
+
+    const closingDay = Number.isFinite(closingDayRaw) && closingDayRaw >= 1 && closingDayRaw <= 31
+        ? closingDayRaw
+        : 25;
+
+    const paymentDay = Number.isFinite(paymentDayRaw) && paymentDayRaw >= 1 && paymentDayRaw <= 31
+        ? paymentDayRaw
+        : 1;
+
+    const [year, month] = normalizedMonth.split('-').map(Number);
+
+    // Se o pagamento acontece antes/no dia do fechamento, o fechamento é no mês anterior ao pagamento.
+    // Ex.: fecha 25/05 e paga 01/06.
+    const closingMonthOffsetFromPayment = paymentDay <= closingDay ? -1 : 0;
+
+    const closingDate = new Date(year, month - 1 + closingMonthOffsetFromPayment, closingDay, 12, 0, 0);
+    const startDate = new Date(closingDate.getFullYear(), closingDate.getMonth() - 1, closingDay, 12, 0, 0);
+    const endDate = new Date(closingDate);
+    endDate.setDate(endDate.getDate() - 1);
+
+    const paymentDate = new Date(year, month - 1, Math.min(paymentDay, new Date(year, month, 0).getDate()), 12, 0, 0);
+
+    const toDateString = (date) => {
+        return date.getFullYear() + '-' +
+            String(date.getMonth() + 1).padStart(2, '0') + '-' +
+            String(date.getDate()).padStart(2, '0');
+    };
+
+    return {
+        startDate: toDateString(startDate),
+        endDate: toDateString(endDate),
+        paymentDate: toDateString(paymentDate),
+        label: 'Cobre compras de ' + formatDate(toDateString(startDate)) +
+            ' a ' + formatDate(toDateString(endDate)) +
+            '. Vence em ' + formatDate(toDateString(paymentDate)) + '.'
+    };
+}
+
+function getFirstInvoiceMonthForPurchase(card, purchaseDate) {
+    return getInvoicePaymentMonthForPurchase(card, purchaseDate);
+}
 
         function generateCardItemInstallmentsPreview(item) {
             if (!item || item.status === 'cancelled') return [];
@@ -1113,42 +1191,30 @@ function confirmTransaction(id) {
         }
 
         function gerarParcelas(dataCompra, valorTotal, numParcelas, cartao) {
-            const parcelas = [];
-            const valorParcela = valorTotal / numParcelas;
-            const dataCompraObj = new Date(dataCompra + 'T12:00:00');
-            
-            const diaCompra = dataCompraObj.getDate();
-            let mesBase = dataCompraObj.getMonth();
-            let anoBase = dataCompraObj.getFullYear();
+    const totalParcelas = Math.max(1, Number(numParcelas) || 1);
+    const valorParcela = (Number(valorTotal) || 0) / totalParcelas;
+    const firstMonth = getInvoicePaymentMonthForPurchase(cartao, dataCompra);
+    const parcelas = [];
 
-            if (diaCompra > cartao.diaFechamento) {
-                mesBase++;
-                if (mesBase > 11) {
-                    mesBase = 0;
-                    anoBase++;
-                }
-            }
+    for (let i = 0; i < totalParcelas; i++) {
+        const mesReferencia = addMonthsToMonthRef(firstMonth, i);
 
-            for (let i = 0; i < numParcelas; i++) {
-                let mes = mesBase + i;
-                let ano = anoBase;
-                
-                while (mes > 11) {
-                    mes -= 12;
-                    ano++;
-                }
+        parcelas.push({
+            numero: i + 1,
+            numeroParcela: i + 1,
+            parcela: i + 1,
+            total: totalParcelas,
+            totalParcelas: totalParcelas,
+            valor: valorParcela,
+            valorParcela: valorParcela,
+            mesReferencia: mesReferencia,
+            invoiceMonth: mesReferencia,
+            status: 'previsto'
+        });
+    }
 
-                const mesRef = `${ano}-${String(mes + 1).padStart(2, '0')}`;
-                
-                parcelas.push({
-                    numero: i + 1,
-                    valor: valorParcela,
-                    mesReferencia: mesRef
-                });
-            }
-
-            return parcelas;
-        }
+    return parcelas;
+}
 
         document.getElementById('cartaoSelect')?.addEventListener('change', updateCartaoPreview);
         document.getElementById('cartaoData')?.addEventListener('change', updateCartaoPreview);
