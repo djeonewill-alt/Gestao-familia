@@ -1868,3 +1868,146 @@ body.view-mode-clean .clean-mode-note {
     color: var(--danger) !important;
     font-weight: 800;
 }
+
+
+/* PATCH 26A — ISOLAMENTO DE PÁGINAS */
+.page {
+    display: none !important;
+}
+
+.page.active {
+    display: block !important;
+}
+
+body[data-current-page="semanal"] #semanal.page.active,
+body[data-current-page="lancamentos"] #lancamentos.page.active,
+body[data-current-page="mercado"] #mercado.page.active,
+body[data-current-page="cartoes"] #cartoes.page.active,
+body[data-current-page="simulador"] #simulador.page.active,
+body[data-current-page="dashboard"] #dashboard.page.active,
+body[data-current-page="treinamento"] #treinamento.page.active,
+body[data-current-page="configuracoes"] #configuracoes.page.active {
+    display: block !important;
+}
+
+
+/* PATCH 26B — SIMULADOR GUIADO */
+.decision-guide-panel {
+    background:
+        linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(15, 28, 48, 0.92)),
+        radial-gradient(circle at top right, rgba(96, 165, 250, 0.14), transparent 32%),
+        radial-gradient(circle at bottom left, rgba(52, 211, 153, 0.10), transparent 32%);
+    border: 1px solid rgba(96, 165, 250, 0.22);
+}
+
+.decision-guide-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.decision-guide-header h2 {
+    border-bottom: none;
+    padding-bottom: 0;
+    margin-bottom: 6px;
+}
+
+.decision-guide-header p {
+    color: var(--text-muted);
+    max-width: 760px;
+}
+
+.decision-guide-steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 16px 0;
+}
+
+.decision-guide-step {
+    padding: 13px;
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    background: rgba(2, 6, 23, 0.26);
+}
+
+.decision-guide-step strong {
+    display: block;
+    color: var(--text-main);
+    margin-bottom: 5px;
+}
+
+.decision-guide-step span {
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.decision-guide-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.decision-field-hint {
+    margin-top: 5px;
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+.decision-simple-help {
+    display: none;
+    margin-top: 14px;
+    padding: 14px;
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    background: rgba(15, 23, 42, 0.42);
+}
+
+.decision-simple-help.active {
+    display: block;
+}
+
+.decision-simple-help strong {
+    color: var(--text-main);
+}
+
+.decision-simple-help li {
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+
+.decision-result-help {
+    margin-top: 14px;
+    padding: 14px;
+    border: 1px solid rgba(96, 165, 250, 0.22);
+    border-radius: var(--radius-md);
+    background: rgba(96, 165, 250, 0.08);
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.decision-result-help strong {
+    color: var(--text-main);
+}
+
+@media (max-width: 900px) {
+    .decision-guide-header {
+        flex-direction: column;
+    }
+
+    .decision-guide-steps {
+        grid-template-columns: 1fr;
+    }
+
+    .decision-guide-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .decision-guide-actions button {
+        width: 100%;
+    }
+}

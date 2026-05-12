@@ -5289,4 +5289,360 @@ init = function() {
     ensureFinalReviewPanel();
 };
 
+
+
+/* PATCH 26B — SIMULADOR GUIADO */
+function ensureDecisionSimulatorGuide() {
+    const simulatorPage = document.getElementById('simulador');
+    if (!simulatorPage) return;
+
+    if (!document.getElementById('decisionGuidePanel')) {
+        const guide = document.createElement('div');
+        guide.className = 'section decision-guide-panel';
+        guide.id = 'decisionGuidePanel';
+
+        guide.innerHTML = `
+            <div class="decision-guide-header">
+                <div>
+                    <div class="clean-home-eyebrow">Simulador estratégico</div>
+                    <h2>Simulador de Decisão em 3 passos</h2>
+                    <p>
+                        Use esta área para responder uma pergunta prática:
+                        se eu perder uma renda fixa, receber um valor parcelado e continuar com minhas despesas,
+                        em que mês o saldo fica perigoso e quanta nova renda preciso gerar?
+                    </p>
+                </div>
+            </div>
+
+            <div class="decision-guide-steps">
+                <div class="decision-guide-step">
+                    <strong>1. Ponto de partida</strong>
+                    <span>Informe saldo inicial, mês inicial e saldo mínimo de segurança.</span>
+                </div>
+                <div class="decision-guide-step">
+                    <strong>2. O que muda</strong>
+                    <span>Informe renda que deixa de entrar, valor a receber parcelado e rendas que continuam.</span>
+                </div>
+                <div class="decision-guide-step">
+                    <strong>3. Resultado</strong>
+                    <span>Veja mês a mês se sobra, falta, quando há risco e qual renda seria necessária.</span>
+                </div>
+            </div>
+
+            <div class="decision-guide-actions">
+                <button class="secondary" onclick="prefillDecisionSimulatorFromApp()">⚙️ Preencher com dados atuais</button>
+                <button onclick="fillExitJobDecisionScenario()">🧭 Modelo: sair de um emprego</button>
+                <button class="secondary" onclick="toggleDecisionSimpleHelp()">Como preencher?</button>
+            </div>
+
+            <div id="decisionSimpleHelp" class="decision-simple-help">
+                <strong>Como pensar este simulador:</strong>
+                <ul>
+                    <li><strong>Valor total a receber:</strong> dinheiro que você receberá ao sair, comissão futura ou acerto.</li>
+                    <li><strong>Dividir em meses:</strong> por quantos meses esse dinheiro vai ajudar no orçamento.</li>
+                    <li><strong>Renda que deixarei de receber:</strong> salário fixo ou renda que vai parar de entrar.</li>
+                    <li><strong>Rendas que continuam:</strong> tudo que continuará entrando normalmente.</li>
+                    <li><strong>Nova renda esperada:</strong> renda que você acredita conseguir gerar.</li>
+                    <li><strong>Despesas essenciais:</strong> aluguel, água, luz, internet, escola, contas fixas.</li>
+                    <li><strong>Despesas variáveis:</strong> mercado, transporte, extras e gastos flexíveis.</li>
+                    <li><strong>Saldo mínimo:</strong> limite de segurança. Abaixo dele o app acende alerta.</li>
+                </ul>
+            </div>
+        `;
+
+        const firstSection = simulatorPage.querySelector('.section');
+        if (firstSection) {
+            simulatorPage.insertBefore(guide, firstSection);
+        } else {
+            simulatorPage.insertBefore(guide, simulatorPage.firstChild);
+        }
+    }
+
+    ensureDecisionFieldHints();
+}
+
+function toggleDecisionSimpleHelp() {
+    const help = document.getElementById('decisionSimpleHelp');
+    if (!help) return;
+    help.classList.toggle('active');
+}
+
+function setDecisionValueIfExists(id, value) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.value = value ?? '';
+}
+
+function getDecisionValueIfExists(id) {
+    const el = document.getElementById(id);
+    return el ? String(el.value || '').trim() : '';
+}
+
+function fillExitJobDecisionScenario() {
+    if (typeof prefillDecisionSimulatorFromApp === 'function') {
+        prefillDecisionSimulatorFromApp();
+    }
+
+    const totalAtual = getDecisionValueIfExists('decisionSeveranceTotal') || '20000';
+    const mesesAtual = getDecisionValueIfExists('decisionSeveranceMonths') || '12';
+    const rendaPerdidaAtual = getDecisionValueIfExists('decisionLostMonthlyIncome') || '0';
+
+    const totalReceber = prompt('Qual valor total você tem para receber? Ex: 20000', totalAtual);
+    if (totalReceber === null) return;
+
+    const mesesReceber = prompt('Esse valor será dividido em quantos meses? Ex: 12', mesesAtual);
+    if (mesesReceber === null) return;
+
+    const rendaPerdida = prompt('Qual renda fixa mensal você deixará de receber? Ex: 3000', rendaPerdidaAtual);
+    if (rendaPerdida === null) return;
+
+    setDecisionValueIfExists('decisionScenarioName', 'Sair de um emprego');
+    setDecisionValueIfExists('decisionMonths', 12);
+    setDecisionValueIfExists('decisionSeveranceTotal', totalReceber);
+    setDecisionValueIfExists('decisionSeveranceMonths', mesesReceber);
+    setDecisionValueIfExists('decisionLostMonthlyIncome', rendaPerdida);
+
+    if (!getDecisionValueIfExists('decisionExtraIncome')) {
+        setDecisionValueIfExists('decisionExtraIncome', 0);
+    }
+
+    alert('Modelo preenchido. Agora revise as rendas que continuam, despesas essenciais e despesas variáveis antes de simular.');
+}
+
+function addDecisionFieldHint(fieldId, text) {
+    const field = document.getElementById(fieldId);
+    if (!field) return;
+
+    const parent = field.closest('.form-group') || field.parentElement;
+    if (!parent) return;
+
+    if (parent.querySelector('.decision-field-hint[data-for="' + fieldId + '"]')) return;
+
+    const hint = document.createElement('div');
+    hint.className = 'decision-field-hint';
+    hint.setAttribute('data-for', fieldId);
+    hint.textContent = text;
+
+    parent.appendChild(hint);
+}
+
+function ensureDecisionFieldHints() {
+    addDecisionFieldHint('decisionScenarioName', 'Dê um nome simples, como: Sair do emprego A ou Continuar como estou.');
+    addDecisionFieldHint('decisionStartMonth', 'Mês em que a simulação começa.');
+    addDecisionFieldHint('decisionMonths', 'Quantos meses você quer enxergar à frente.');
+    addDecisionFieldHint('decisionCurrentBalance', 'Saldo disponível hoje, normalmente o saldo do banco.');
+    addDecisionFieldHint('decisionSeveranceTotal', 'Valor total que você receberá, como acerto, comissão ou reserva temporária.');
+    addDecisionFieldHint('decisionSeveranceMonths', 'Em quantos meses esse valor será distribuído na simulação.');
+    addDecisionFieldHint('decisionLostMonthlyIncome', 'Renda fixa mensal que deixará de entrar se você sair do emprego.');
+    addDecisionFieldHint('decisionContinuingIncome', 'Rendas que continuarão entrando normalmente.');
+    addDecisionFieldHint('decisionExtraIncome', 'Nova renda que você acredita conseguir gerar por mês.');
+    addDecisionFieldHint('decisionEssentialExpenses', 'Contas fixas: aluguel, água, luz, internet, escola, financiamentos.');
+    addDecisionFieldHint('decisionVariableExpenses', 'Gastos variáveis: mercado, transporte, extras, compras e ajustes.');
+    addDecisionFieldHint('decisionMinimumBalance', 'Valor mínimo que você não quer ultrapassar para baixo.');
+}
+
+function appendDecisionResultHelp() {
+    const container = document.getElementById('decisionSimulatorResults');
+    if (!container) return;
+
+    if (container.querySelector('.decision-result-help')) return;
+
+    const help = document.createElement('div');
+    help.className = 'decision-result-help';
+    help.innerHTML = `
+        <strong>Como interpretar:</strong><br>
+        Se o saldo final fica acima do saldo mínimo, o cenário é mais seguro.
+        Se aparece um mês de risco, aquele é o primeiro mês em que sua reserva fica abaixo do limite.
+        A renda mensal sugerida mostra quanto você precisaria gerar para equilibrar o pior mês.
+    `;
+
+    container.appendChild(help);
+}
+
+if (typeof renderDecisionSimulation === 'function' && !window.__renderDecisionSimulationGuided) {
+    window.__renderDecisionSimulationGuided = true;
+    const originalRenderDecisionSimulationBeforeGuide = renderDecisionSimulation;
+
+    renderDecisionSimulation = function(result) {
+        originalRenderDecisionSimulationBeforeGuide(result);
+        appendDecisionResultHelp();
+    };
+}
+
+if (typeof showPage === 'function' && !window.__showPageDecisionGuideWrapped) {
+    window.__showPageDecisionGuideWrapped = true;
+    const originalShowPageBeforeDecisionGuide = showPage;
+
+    showPage = function(pageId) {
+        originalShowPageBeforeDecisionGuide(pageId);
+
+        if (pageId === 'simulador') {
+            ensureDecisionSimulatorGuide();
+        }
+    };
+}
+
+window.addEventListener('load', function() {
+    ensureDecisionSimulatorGuide();
+});
+
 window.onload = init;
+
+
+/* PATCH 26A — NAVEGAÇÃO ISOLADA */
+(function() {
+    const PAGE_IDS = [
+        'semanal',
+        'lancamentos',
+        'mercado',
+        'cartoes',
+        'simulador',
+        'dashboard',
+        'treinamento',
+        'configuracoes'
+    ];
+
+    function safeCall(fnName, ...args) {
+        try {
+            if (typeof window[fnName] === 'function') {
+                return window[fnName](...args);
+            }
+        } catch (error) {
+            console.warn('Erro ao executar ' + fnName + ':', error);
+        }
+
+        return null;
+    }
+
+    function getMainContainer() {
+        return document.querySelector('.container') || document.body;
+    }
+
+    function repairPageStructure() {
+        const container = getMainContainer();
+
+        PAGE_IDS.forEach(pageId => {
+            const page = document.getElementById(pageId);
+            if (!page) return;
+
+            if (page.parentElement !== container) {
+                container.appendChild(page);
+            }
+        });
+    }
+
+    function activateNavTab(pageId) {
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            tab.classList.remove('active');
+
+            const onclick = tab.getAttribute('onclick') || '';
+            if (
+                onclick.includes("'" + pageId + "'") ||
+                onclick.includes('"' + pageId + '"')
+            ) {
+                tab.classList.add('active');
+            }
+        });
+    }
+
+    function renderPageAfterNavigation(pageId) {
+        if (pageId === 'semanal') {
+            safeCall('updateSemanal');
+            safeCall('renderNextRecommendedAction');
+            safeCall('markAdvancedSections');
+            safeCall('applyViewMode');
+        }
+
+        if (pageId === 'lancamentos') {
+            safeCall('updateAllSelects');
+            safeCall('renderTodasTransacoes');
+        }
+
+        if (pageId === 'mercado') {
+            safeCall('updateMercado');
+        }
+
+        if (pageId === 'cartoes') {
+            safeCall('updateAllSelects');
+            safeCall('renderCartoes');
+            safeCall('updateFaturas');
+            safeCall('renderCardRecurringItems');
+            safeCall('updateCardItemForm');
+        }
+
+        if (pageId === 'simulador') {
+            safeCall('initializeDecisionSimulator');
+            safeCall('renderDecisionScenarios');
+        }
+
+        if (pageId === 'dashboard') {
+            safeCall('initializeDashboard');
+            safeCall('renderDashboard');
+        }
+
+        if (pageId === 'treinamento') {
+            safeCall('renderTrainingModule');
+        }
+
+        if (pageId === 'configuracoes') {
+            safeCall('updateAllSelects');
+            safeCall('renderCartoes');
+            safeCall('ensureFinalReviewPanel');
+        }
+
+        safeCall('ensureContextHelpButtons');
+    }
+
+    window.showPage = function(pageId) {
+        repairPageStructure();
+
+        let target = document.getElementById(pageId);
+
+        if (!target) {
+            console.warn('Página não encontrada:', pageId);
+            pageId = 'semanal';
+            target = document.getElementById(pageId);
+        }
+
+        document.querySelectorAll('.page').forEach(page => {
+            page.classList.remove('active');
+            page.style.display = 'none';
+        });
+
+        if (target) {
+            target.classList.add('active');
+            target.style.display = 'block';
+        }
+
+        activateNavTab(pageId);
+
+        document.body.setAttribute('data-current-page', pageId);
+
+        renderPageAfterNavigation(pageId);
+
+        setTimeout(() => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 30);
+    };
+
+    const previousOnload = window.onload;
+
+    window.onload = function(event) {
+        if (typeof previousOnload === 'function') {
+            previousOnload.call(window, event);
+        }
+
+        repairPageStructure();
+
+        document.querySelectorAll('.page').forEach(page => {
+            page.classList.remove('active');
+            page.style.display = 'none';
+        });
+
+        const initialPage = document.getElementById('semanal') ? 'semanal' : PAGE_IDS.find(id => document.getElementById(id));
+
+        if (initialPage) {
+            window.showPage(initialPage);
+        }
+    };
+})();
