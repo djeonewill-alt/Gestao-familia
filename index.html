@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão Financeira - Controle Semanal</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="header">
+        <h1>💰 Gestão Financeira Familiar</h1>
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showPage('semanal')">📅 Visão Semanal</button>
+            <button class="nav-tab" onclick="showPage('lancamentos')">➕ Lançamentos</button>
+            <button class="nav-tab" onclick="showPage('mercado')">🛒 Mercado</button>
+            <button class="nav-tab" onclick="showPage('cartoes')">💳 Cartões</button>
+            <button class="nav-tab" onclick="showPage('simulador')">🔮 Simulador</button>
+                                    <button class="nav-tab" onclick="showPage('dashboard')">📊 Dashboard</button>
+<button class="nav-tab" onclick="showPage('treinamento')">🎓 Treinamento</button>
+<button class="nav-tab" onclick="showPage('configuracoes')">⚙️ Configurações</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- PÁGINA: VISÃO SEMANAL -->
+        <div id="semanal" class="page active">
+            
+                        <div class="section quick-start-panel clean-home-panel" id="quickStartPanel">
+                <div class="clean-home-content">
+                    <div>
+                        <div class="clean-home-eyebrow">Fluxo financeiro familiar</div>
+                        <h2>Visão simples da semana</h2>
+                        <p>
+                            Veja o saldo, confirme o que realmente entrou ou saiu e acompanhe a projeção sem perder clareza.
+                        </p>
+                    </div>
+
+                    <div class="clean-home-actions">
+                        <button onclick="showPage('lancamentos')">➕ Lançar</button>
+                        <button onclick="showPage('cartoes')" class="secondary">💳 Faturas</button>
+                        <button onclick="showPage('simulador')" class="secondary">🧭 Simular</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section next-action-panel" id="nextActionPanel">
+                <div class="next-action-layout">
+                    <div class="next-action-icon" id="nextActionIcon">✨</div>
+                    <div class="next-action-content">
+                        <div class="next-action-label">Próxima ação recomendada</div>
+                        <div class="next-action-title" id="nextActionTitle">Carregando análise...</div>
+                        <div class="next-action-description" id="nextActionDescription">
+                            O app está verificando lançamentos, faturas e projeções.
+                        </div>
+                    </div>
+                    <div class="next-action-button-wrap" id="nextActionButtonWrap"></div>
+                </div>
+            </div>
+
+            <!-- Saldo e Indicadores -->
+            <div class="dashboard-cards">
+                <div class="card">
+                    <h3>💰 Saldo Atual</h3>
+                    <div class="value" id="saldoAtual">R$ 0,00</div>
+                    <div class="subtext">Atualize conforme o banco</div>
+                    <input type="number" step="0.01" id="inputSaldoAtual" placeholder="Atualizar saldo" style="margin-top: 10px; font-size: 12px; padding: 6px;">
+                    <button onclick="updateSaldoAtual()" style="margin-top: 5px; padding: 6px 12px; font-size: 12px;">Atualizar</button>
+                </div>
+                <div class="card">
+                    <h3>🎯 Fundo de Emergência</h3>
+                    <div class="value positive" id="fundoEmergencia">R$ 0,00</div>
+                    <div class="subtext">Reserva intocável</div>
+                </div>
+                <div class="card">
+                    <h3>💵 Disponível Real</h3>
+                    <div class="value" id="disponivelReal">R$ 0,00</div>
+                    <div class="subtext">Saldo - Emergência</div>
+                </div>
+                <div class="card">
+                    <h3>💎 Meta Economia (Mês)</h3>
+                    <div class="value" id="metaEconomia">R$ 0,00</div>
+                    <div class="subtext">Objetivo mensal</div>
+                </div>
+            </div>
+
+            <!-- Semana Atual -->
+            <div class="section">
+                <h2>📅 Esta Semana</h2>
+                <div class="week-selector">
+                    <button onclick="changeWeek(-1)">← Anterior</button>
+                    <div class="week-info" id="weekInfo"></div>
+                    <button onclick="changeWeek(1)">Próxima →</button>
+                    <button class="secondary" onclick="changeWeek(0)">Hoje</button>
+                </div>
+
+                <div id="weekAlerts"></div>
+
+                <div class="dashboard-cards">
+                    <div class="card">
+                        <h3>Saldo Base</h3>
+                        <div class="value" id="weekSaldoBase">R$ 0,00</div>
+                        <div class="subtext">Saldo informado no banco</div>
+                    </div>
+                    <div class="card">
+                        <h3>Entradas Confirmadas</h3>
+                        <div class="value positive" id="weekEntradasConfirmadas">R$ 0,00</div>
+                        <div class="subtext">Ja deram baixa</div>
+                    </div>
+                    <div class="card">
+                        <h3>Entradas Previstas</h3>
+                        <div class="value positive" id="weekEntradasPrevistas">R$ 0,00</div>
+                        <div class="subtext">Ainda pendentes/atrasadas</div>
+                    </div>
+                    <div class="card">
+                        <h3>Saidas Confirmadas</h3>
+                        <div class="value negative" id="weekSaidasConfirmadas">R$ 0,00</div>
+                        <div class="subtext">Ja pagas/baixadas</div>
+                    </div>
+                    <div class="card">
+                        <h3>Saidas Previstas</h3>
+                        <div class="value negative" id="weekSaidasPrevistas">R$ 0,00</div>
+                        <div class="subtext">Pendentes/atrasadas</div>
+                    </div>
+                    <div class="card">
+                        <h3>Saldo Projetado</h3>
+                        <div class="value" id="weekSaldoProjetado">R$ 0,00</div>
+                        <div class="subtext">Se tudo previsto acontecer</div>
+                    </div>
+                    <div class="card">
+                        <h3>Resultado Pendente</h3>
+                        <div class="value" id="weekResultadoPendente">R$ 0,00</div>
+                        <div class="subtext">Entradas previstas - saidas previstas</div>
+                    </div>
+                    <div style="display: none;">
+                        <span id="weekPlanejado">R$ 0,00</span>
+                        <span id="weekRealizado">R$ 0,00</span>
+                        <span id="weekEntradas">R$ 0,00</span>
+                    </div>
+                </div>
+
+                <div id="weekTransacoes"></div>
+            </div>
+
+            <!-- Projeção do Mês -->
+            <div class="section">
+                <h2>📊 Projeção do Mês</h2>
+                <div class="dashboard-cards">
+                    <div class="card">
+                        <h3>Entradas Previstas</h3>
+                        <div class="value positive" id="mesEntradas">R$ 0,00</div>
+                    </div>
+                    <div class="card">
+                        <h3>Saídas Previstas</h3>
+                        <div class="value negative" id="mesSaidas">R$ 0,00</div>
+                    </div>
+                    <div class="card">
+                        <h3>Saldo Final Projetado</h3>
+                        <div class="value" id="mesSaldoFinal">R$ 0,00</div>
+                    </div>
+                    <div class="card">
+                        <h3>Resultado vs Meta</h3>
+                        <div class="value" id="mesResultadoMeta">R$ 0,00</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Timeline de Projeção -->
+            <div class="section">
+                <h2>🗓️ Projeção das Próximas Semanas</h2>
+                <div id="timelineProjecao" class="projecao-timeline"></div>
+            </div>
+        </div>
+
+        <!-- PÁGINA: LANÇAMENTOS -->
+        <div id="lancamentos" class="page">
+            <div class="section">
+                <h2>➕ Novo Lançamento</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Tipo de Lançamento</label>
+                        <select id="tipoLancamento" onchange="updateLancamentoForm()">
+                            <option value="dinheiro">💵 Dinheiro (Entrada/Saída)</option>
+                            <option value="cartao">💳 Cartão de Crédito</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Formulário Dinheiro -->
+                <div id="formDinheiro">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Tipo</label>
+                            <select id="dinheiroTipo">
+                                <option value="entrada">💰 Entrada</option>
+                                <option value="saida">💸 Saída</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Data</label>
+                            <input type="date" id="dinheiroData">
+                        </div>
+                        <div class="form-group">
+                            <label>Valor (R$)</label>
+                            <input type="number" step="0.01" id="dinheiroValor" placeholder="0.00">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Categoria</label>
+                            <select id="dinheiroCategoria"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Responsável</label>
+                            <select id="dinheiroResponsavel"></select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Descrição</label>
+                        <input type="text" id="dinheiroDescricao" placeholder="Ex: Salário, Supermercado, Dízimo...">
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="dinheiroRecorrente" style="width: auto; margin-right: 5px;">
+                            Lançamento recorrente (repetir automaticamente)
+                        </label>
+                    </div>
+                    <button onclick="addLancamentoDinheiro()">Adicionar Lançamento</button>
+                </div>
+
+                <!-- Formulário Cartão -->
+                <div id="formCartao" style="display:none;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Cartão</label>
+                            <select id="cartaoSelect"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Data da Compra</label>
+                            <input type="date" id="cartaoData">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Valor Total (R$)</label>
+                            <input type="number" step="0.01" id="cartaoValor" placeholder="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label>Parcelas</label>
+                            <input type="number" min="1" id="cartaoParcelas" value="1">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Categoria</label>
+                            <select id="cartaoCategoria"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Responsável</label>
+                            <select id="cartaoResponsavel"></select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Descrição</label>
+                        <input type="text" id="cartaoDescricao" placeholder="Ex: Notebook, Roupas...">
+                    </div>
+                    <div id="cartaoPreview" class="alert alert-info" style="display:none;"></div>
+                    <button onclick="addLancamentoCartao()">Adicionar Compra no Cartão</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>📝 Todos os Lançamentos</h2>
+                <div id="todasTransacoes"></div>
+            </div>
+        </div>
+
+        <!-- PÁGINA: MERCADO -->
+        <div id="mercado" class="page">
+            <div class="section">
+                <h2>🛒 Lista de Mercado desta Semana</h2>
+                <p style="color: #7f8c8d; margin-bottom: 20px;">Planeje as compras da semana e acompanhe os preços!</p>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Produto</label>
+                        <input type="text" id="produtoNome" placeholder="Ex: Tomate, Carne moída...">
+                    </div>
+                    <div class="form-group">
+                        <label>Quantidade</label>
+                        <input type="text" id="produtoQtd" placeholder="Ex: 1kg, 500g, 2 unidades...">
+                    </div>
+                    <div class="form-group">
+                        <label>Preço Estimado (R$)</label>
+                        <input type="number" step="0.01" id="produtoPreco" placeholder="0.00">
+                    </div>
+                </div>
+                <button onclick="addProdutoLista()">Adicionar à Lista</button>
+
+                <div style="margin-top: 20px;">
+                    <h3 style="margin-bottom: 15px;">Lista desta semana:</h3>
+                    <div id="listaCompras"></div>
+                    <div style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                        <strong>Total Estimado: <span id="totalLista">R$ 0,00</span></strong>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>📈 Histórico de Preços</h2>
+                <div id="historicoPrecos"></div>
+            </div>
+
+            <div class="section">
+                <h2>📊 Gastos com Mercado</h2>
+                <div class="dashboard-cards">
+                    <div class="card">
+                        <h3>Esta Semana</h3>
+                        <div class="value" id="mercadoSemana">R$ 0,00</div>
+                    </div>
+                    <div class="card">
+                        <h3>Este Mês</h3>
+                        <div class="value" id="mercadoMes">R$ 0,00</div>
+                    </div>
+                    <div class="card">
+                        <h3>Média Semanal</h3>
+                        <div class="value" id="mercadoMedia">R$ 0,00</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PÁGINA: CARTÕES -->
+        <div id="cartoes" class="page">
+            <div class="section">
+                <div class="section-title-with-help">
+                    <h2>💳 Meus Cartões de Crédito</h2>
+                    <button class="help-chip" onclick="showContextHelp('cartoes')">Ajuda</button>
+                </div>
+                <div id="listaCartoes"></div>
+            </div>
+
+            <div class="section">
+                <h2>Adicionar item na fatura</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Cartao</label>
+                        <select id="cardItemCardId"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Tipo</label>
+                        <select id="cardItemType" onchange="updateCardItemForm()">
+                            <option value="single">Compra a vista</option>
+                            <option value="installment">Compra parcelada</option>
+                            <option value="existing_installment">Parcela ja em andamento</option>
+                            <option value="recurring">Recorrente mensal</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Data da compra</label>
+                        <input type="date" id="cardItemPurchaseDate">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Descricao</label>
+                        <input type="text" id="cardItemDescription" placeholder="Ex: Mercado, celular, roupa...">
+                    </div>
+                    <div class="form-group">
+                        <label>Valor total (R$)</label>
+                        <input type="number" step="0.01" id="cardItemTotalAmount" placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label>Parcelas</label>
+                        <input type="number" min="1" id="cardItemTotalInstallments" value="1">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Parcela atual</label>
+                        <input type="number" min="1" id="cardItemFirstInstallmentNumber" value="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Mes da primeira fatura</label>
+                        <input type="month" id="cardItemFirstInvoiceMonth">
+                    </div>
+                    <div class="form-group">
+                        <label>Valor da parcela (R$)</label>
+                        <input type="number" step="0.01" id="cardItemInstallmentAmount" placeholder="0.00">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Categoria</label>
+                        <select id="cardItemCategory"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Responsavel</label>
+                        <select id="cardItemResponsible"></select>
+                    </div>
+                </div>
+                <div id="cardItemPreview" class="alert alert-info" style="display:none;"></div>
+                <button onclick="addCardItem()">Adicionar item a fatura</button>
+                <div id="cardRecurringItemsList" style="margin-top: 15px;"></div>
+            </div>
+
+            <div class="section">
+                <h2>📅 Faturas por Mês</h2>
+                <div class="form-group">
+                    <label>Selecionar Mês/Ano</label>
+                    <input type="month" id="mesReferencia" onchange="updateFaturas()">
+                </div>
+                <div id="faturasMes"></div>
+            </div>
+        </div>
+
+        <!-- PÁGINA: SIMULADOR -->
+        <div id="simulador" class="page">
+            <div class="section">
+                <h2>🔮 Simulador de Compras</h2>
+                <p style="color: #7f8c8d; margin-bottom: 20px;">Compare diferentes opções de parcelamento e veja o impacto nas suas faturas.</p>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Cartão</label>
+                        <select id="simCartao"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Valor da Compra (R$)</label>
+                        <input type="number" step="0.01" id="simValor" placeholder="0.00">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Data da Compra</label>
+                    <input type="date" id="simData">
+                </div>
+
+                <div class="form-group">
+                    <label>Opções de Parcelamento (separe por vírgula, ex: 1,3,6,10)</label>
+                    <input type="text" id="simOpcoes" value="1,3,6" placeholder="1,3,6,10,12">
+                </div>
+
+                <button onclick="simular()">🔮 Simular</button>
+
+                <div id="simResultados" class="simulator-comparison"></div>
+            </div>
+        </div>
+
+        
+            <div class="section">
+                <div class="section-title-with-help">
+                    <h2>🧭 Simulador de Decisão Financeira</h2>
+                    <button class="help-chip" onclick="showContextHelp('simulador')">Ajuda</button>
+                </div>
+                <p style="color: #7f8c8d; margin-bottom: 20px;">
+                    Simule cenários como sair de um emprego, viver por alguns meses com uma renda reduzida,
+                    receber um valor parcelado e descobrir quanto precisa gerar de nova renda.
+                </p>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nome do cenário</label>
+                        <input type="text" id="decisionScenarioName" placeholder="Ex: Sair do emprego A">
+                    </div>
+                    <div class="form-group">
+                        <label>Mês inicial</label>
+                        <input type="month" id="decisionStartMonth">
+                    </div>
+                    <div class="form-group">
+                        <label>Meses para projetar</label>
+                        <input type="number" min="1" max="36" id="decisionMonths" value="12">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Saldo inicial disponível (R$)</label>
+                        <input type="number" step="0.01" id="decisionCurrentBalance" placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label>Valor total a receber (R$)</label>
+                        <input type="number" step="0.01" id="decisionSeveranceTotal" placeholder="Ex: 20000">
+                    </div>
+                    <div class="form-group">
+                        <label>Dividir esse valor em quantos meses?</label>
+                        <input type="number" min="1" max="60" id="decisionSeveranceMonths" value="12">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Renda fixa que deixarei de receber (R$ / mês)</label>
+                        <input type="number" step="0.01" id="decisionLostMonthlyIncome" placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label>Rendas que continuam (R$ / mês)</label>
+                        <input type="number" step="0.01" id="decisionContinuingIncome" placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label>Nova renda esperada ou extra (R$ / mês)</label>
+                        <input type="number" step="0.01" id="decisionExtraIncome" placeholder="0.00">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Despesas essenciais mensais (R$)</label>
+                        <input type="number" step="0.01" id="decisionEssentialExpenses" placeholder="Aluguel, luz, água, internet...">
+                    </div>
+                    <div class="form-group">
+                        <label>Despesas variáveis mensais (R$)</label>
+                        <input type="number" step="0.01" id="decisionVariableExpenses" placeholder="Mercado, transporte, extras...">
+                    </div>
+                    <div class="form-group">
+                        <label>Saldo mínimo de segurança (R$)</label>
+                        <input type="number" step="0.01" id="decisionMinimumBalance" placeholder="Ex: fundo de emergência">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="decisionIncludeCardInvoices" style="width: auto; margin-right: 5px;" checked>
+                        Incluir faturas futuras dos cartões no cálculo
+                    </label>
+                </div>
+
+                <div class="btn-group">
+                    
+                    <button class="secondary" onclick="prefillDecisionSimulatorFromApp()">⚙️ Preencher com dados atuais</button>
+                    <button onclick="runDecisionSimulation()">🧮 Simular cenário</button>
+                    <button class="success" onclick="saveDecisionScenario()">💾 Salvar cenário</button>
+                </div>
+
+                <div id="decisionSimulatorResults" style="margin-top: 20px;"></div>
+            </div>
+
+            <div class="section">
+                <h2>📁 Cenários Salvos</h2>
+                <div id="decisionScenariosList"></div>
+
+                <div id="decisionScenarioComparePanel" class="decision-compare-panel">
+                    <h3>Comparar cenários</h3>
+                    <p>
+                        Compare dois cenários salvos, como continuar no emprego atual versus sair e viver com renda temporária.
+                    </p>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Cenário A</label>
+                            <select id="decisionCompareA"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Cenário B</label>
+                            <select id="decisionCompareB"></select>
+                        </div>
+                    </div>
+
+                    <div class="btn-group">
+                        <button onclick="compareDecisionScenarios()">Comparar cenários</button>
+                    </div>
+
+                    <div id="decisionComparisonResults" style="margin-top: 20px;"></div>
+                </div>
+            </div>
+
+<!-- PÁGINA: CONFIGURAÇÕES -->
+        
+        
+        <!-- PÁGINA: DASHBOARD -->
+        <div id="dashboard" class="page">
+            <div class="section dashboard-hero">
+                <div class="dashboard-hero-content">
+                    <div>
+                        <div class="clean-home-eyebrow">Análise financeira</div>
+                        <h2>Dashboard</h2>
+                        <p>
+                            Aqui ficam os indicadores analíticos. A tela inicial continua limpa,
+                            enquanto esta área mostra a engenharia financeira por trás do app.
+                        </p>
+                    </div>
+                    <div class="form-group dashboard-month-picker">
+                        <label>Mês de análise</label>
+                        <input type="month" id="dashboardMonth" onchange="renderDashboard()">
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title-with-help">
+                    <h2>📌 Resumo do mês</h2>
+                    <button class="help-chip" onclick="showContextHelp('dashboard')">Ajuda</button>
+                </div>
+                <div id="dashboardSummaryCards" class="dashboard-cards"></div>
+            </div>
+
+            <div class="section">
+                <h2>📊 Previsto x Confirmado</h2>
+                <div id="dashboardPlannedConfirmed"></div>
+            </div>
+
+            <div class="section">
+                <h2>🏷️ Gastos por categoria</h2>
+                <div id="dashboardCategoryList"></div>
+            </div>
+
+            <div class="section">
+                <h2>🗓️ Próximas semanas</h2>
+                <div id="dashboardFutureWeeks"></div>
+            </div>
+
+            <div class="section">
+                <h2>💳 Faturas futuras</h2>
+                <div id="dashboardFutureInvoices"></div>
+            </div>
+
+            
+            <div class="section">
+                <h2>💳 BI de Cartões e Faturas</h2>
+                <div id="dashboardCardBI"></div>
+            </div>
+
+
+            <div class="section">
+                <h2>🛒 BI de Categorias e Mercado</h2>
+                <div id="dashboardMarketCategoryBI"></div>
+            </div>
+
+<div class="section">
+                <h2>🔎 Maiores despesas do mês</h2>
+                <div id="dashboardTopExpenses"></div>
+            </div>
+        </div>
+
+<!-- PÁGINA: TREINAMENTO -->
+        <div id="treinamento" class="page">
+            <div class="section">
+                <h2>🎓 Treinamento — Como usar seu controle financeiro</h2>
+                <p style="color: #7f8c8d; margin-bottom: 20px;">
+                    Siga este passo a passo para usar o app no dia a dia. Marque cada etapa como concluída conforme for aprendendo.
+                </p>
+
+                <div class="dashboard-cards">
+                    <div class="card">
+                        <h3>Progresso</h3>
+                        <div class="value" id="trainingProgressValue">0%</div>
+                        <div class="subtext" id="trainingProgressText">Nenhuma etapa concluída</div>
+                    </div>
+                    <div class="card">
+                        <h3>Objetivo</h3>
+                        <div class="value">Clareza</div>
+                        <div class="subtext">Entender entradas, saídas, faturas e decisões</div>
+                    </div>
+                    <div class="card">
+                        <h3>Uso ideal</h3>
+                        <div class="value">Semanal</div>
+                        <div class="subtext">Atualize e revise sua semana</div>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button onclick="renderTrainingModule()">Atualizar progresso</button>
+                    <button class="secondary" onclick="resetTrainingProgress()">Reiniciar treinamento</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>📌 Passo a passo principal</h2>
+                <div id="trainingStepsList"></div>
+            </div>
+
+            <div class="section">
+                <h2>🧭 Rotina semanal recomendada</h2>
+                <div class="alert alert-info">
+                    <strong>Uma vez por semana:</strong><br>
+                    1. Atualize o saldo real conforme o banco.<br>
+                    2. Confira entradas previstas da semana.<br>
+                    3. Confira saídas previstas da semana.<br>
+                    4. Dê baixa no que realmente entrou ou saiu.<br>
+                    5. Revise as faturas dos cartões.<br>
+                    6. Veja o saldo projetado da próxima semana.
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>🧪 Checklist de conferência antes de tomar decisão</h2>
+                <div class="alert alert-warning">
+                    Antes de decidir sair de uma renda fixa, confira:<br><br>
+                    ✅ Saldo atual atualizado pelo banco.<br>
+                    ✅ Faturas futuras lançadas nos cartões.<br>
+                    ✅ Recorrentes cadastradas.<br>
+                    ✅ Despesas essenciais mensais estimadas.<br>
+                    ✅ Valor total a receber dividido por meses.<br>
+                    ✅ Simulador de decisão preenchido com dados atuais.<br>
+                    ✅ Cenário salvo para comparação futura.
+                </div>
+            </div>
+        </div>
+
+<div id="configuracoes" class="page">
+            <div class="section">
+                <h2>💎 Metas e Reservas</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Fundo de Emergência (R$)</label>
+                        <input type="number" step="0.01" id="configFundoEmergencia" placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label>Meta de Economia Mensal (R$)</label>
+                        <input type="number" step="0.01" id="configMetaEconomia" placeholder="0.00">
+                    </div>
+                </div>
+                <button onclick="saveMetasReservas()">💾 Salvar Metas</button>
+            </div>
+
+            <div class="section">
+                <h2>🏷️ Categorias</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nova Categoria</label>
+                        <input type="text" id="novaCategoria" placeholder="Ex: Alimentação, Transporte...">
+                    </div>
+                </div>
+                <button onclick="addCategoria()">Adicionar Categoria</button>
+                <div id="listaCategorias" style="margin-top: 20px;"></div>
+            </div>
+
+            <div class="section">
+                <h2>👥 Responsáveis</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Novo Responsável</label>
+                        <input type="text" id="novoResponsavel" placeholder="Ex: Meu, Igreja, João...">
+                    </div>
+                </div>
+                <button onclick="addResponsavel()">Adicionar Responsável</button>
+                <div id="listaResponsaveis" style="margin-top: 20px;"></div>
+            </div>
+
+            <div class="section">
+                <h2>💳 Cadastrar Cartão</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nome do Cartão</label>
+                        <input type="text" id="nomeCartao" placeholder="Ex: Nubank, Itaú...">
+                    </div>
+                    <div class="form-group">
+                        <label>Limite (R$)</label>
+                        <input type="number" step="0.01" id="limiteCartao" placeholder="0.00">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Dia do Fechamento</label>
+                        <input type="number" min="1" max="31" id="diaFechamento" placeholder="Ex: 5">
+                    </div>
+                    <div class="form-group">
+                        <label>Dia do Pagamento</label>
+                        <input type="number" min="1" max="31" id="diaPagamento" placeholder="Ex: 15">
+                    </div>
+                </div>
+                <button onclick="addCartao()">Cadastrar Cartão</button>
+            </div>
+
+            <div class="section">
+                <div class="section-title-with-help">
+                    <h2>💾 Dados</h2>
+                    <button class="help-chip" onclick="showContextHelp('configuracoes')">Ajuda</button>
+                </div>
+                <div class="btn-group">
+                    <button class="success" onclick="exportData()">📥 Exportar Dados</button>
+                    <button class="secondary" onclick="importData()">📤 Importar Dados</button>
+                    <button class="danger" onclick="resetData()">🗑️ Limpar Tudo</button>
+                    <button class="secondary" onclick="showDataHealthCheck()">🧪 Verificar Dados</button>
+                    <button class="secondary" onclick="createManualBackupFromUI()">🛡️ Backup Manual</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
