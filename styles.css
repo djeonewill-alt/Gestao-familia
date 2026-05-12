@@ -2109,3 +2109,47 @@ body[data-current-page="configuracoes"] #configuracoes.page.active {
         justify-content: flex-start;
     }
 }
+
+
+/* PATCH 27A — BACKUP SEGURO EM ARQUIVO */
+.safe-backup-panel {
+    margin-top: 20px;
+    border-color: rgba(52, 211, 153, 0.26);
+    background:
+        linear-gradient(135deg, rgba(15, 23, 42, 0.94), rgba(15, 28, 48, 0.88)),
+        radial-gradient(circle at top right, rgba(52, 211, 153, 0.12), transparent 32%);
+}
+
+.safe-backup-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+}
+
+.safe-backup-status {
+    margin-top: 12px;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.safe-backup-warning {
+    margin-top: 12px;
+    padding: 12px 14px;
+    border: 1px solid rgba(251, 191, 36, 0.24);
+    border-radius: var(--radius-md);
+    background: rgba(251, 191, 36, 0.09);
+    color: #fde68a;
+    font-size: 13px;
+}
+
+@media (max-width: 768px) {
+    .safe-backup-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .safe-backup-actions button {
+        width: 100%;
+    }
+}

@@ -5845,3 +5845,174 @@ window.onload = init;
         }
     };
 })();
+
+
+/* PATCH 27A — BACKUP SEGURO EM ARQUIVO */
+const SAFE_BACKUP_LAST_DOWNLOAD_KEY = 'financeLastDownloadedBackupAtV1';
+
+function getFinanceBackupPayload() {
+    const raw = localStorage.getItem('financeDataV2');
+    let parsed = null;
+
+    try {
+        parsed = raw ? JSON.parse(raw) : data;
+    } catch (error) {
+        parsed = data;
+    }
+
+    return {
+        app: 'financeiro-familiar',
+        version: 'backup-file-v1',
+        exportedAt: new Date().toISOString(),
+        origin: window.location.origin,
+        userAgent: navigator.userAgent,
+        data: parsed || data
+    };
+}
+
+function getFinanceBackupFileName() {
+    const now = new Date();
+    const stamp = now.toISOString()
+        .replace(/:/g, '-')
+        .replace(/\..+/, '');
+
+    return 'backup-financeiro-familiar-' + stamp + '.json';
+}
+
+function downloadFinanceBackupFile() {
+    try {
+        saveData();
+
+        const payload = getFinanceBackupPayload();
+        const json = JSON.stringify(payload, null, 2);
+        const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const fileName = getFinanceBackupFileName();
+
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+
+        URL.revokeObjectURL(url);
+
+        localStorage.setItem(SAFE_BACKUP_LAST_DOWNLOAD_KEY, new Date().toISOString());
+
+        renderSafeBackupPanel();
+
+        alert('Backup baixado com sucesso. Guarde o arquivo em uma pasta segura, Google Drive ou OneDrive.');
+    } catch (error) {
+        console.error('Erro ao baixar backup:', error);
+        alert('Erro ao baixar backup. Veja o console.');
+    }
+}
+
+async function copyFinanceBackupToClipboard() {
+    try {
+        saveData();
+
+        const payload = getFinanceBackupPayload();
+        const json = JSON.stringify(payload, null, 2);
+
+        if (!navigator.clipboard || !navigator.clipboard.writeText) {
+            alert('Seu navegador não permitiu copiar automaticamente. Use o botão Baixar Backup Agora.');
+            return;
+        }
+
+        await navigator.clipboard.writeText(json);
+
+        alert('Backup copiado para a área de transferência.');
+    } catch (error) {
+        console.error('Erro ao copiar backup:', error);
+        alert('Erro ao copiar backup. Use o botão Baixar Backup Agora.');
+    }
+}
+
+function getLastSafeBackupText() {
+    const last = localStorage.getItem(SAFE_BACKUP_LAST_DOWNLOAD_KEY);
+
+    if (!last) {
+        return 'Nenhum backup em arquivo baixado ainda neste navegador.';
+    }
+
+    try {
+        return 'Último backup baixado neste navegador: ' + new Date(last).toLocaleString('pt-BR');
+    } catch (error) {
+        return 'Último backup registrado: ' + last;
+    }
+}
+
+function renderSafeBackupPanel() {
+    const status = document.getElementById('safeBackupStatus');
+    if (status) {
+        status.textContent = getLastSafeBackupText();
+    }
+}
+
+function ensureSafeBackupPanel() {
+    const page = document.getElementById('configuracoes');
+    if (!page) return;
+
+    if (document.getElementById('safeBackupPanel')) {
+        renderSafeBackupPanel();
+        return;
+    }
+
+    const panel = document.createElement('div');
+    panel.className = 'section safe-backup-panel';
+    panel.id = 'safeBackupPanel';
+
+    panel.innerHTML = `
+        <div class="section-title-with-help">
+            <h2>🛡️ Backup seguro em arquivo</h2>
+            <button class="help-chip" onclick="showContextHelp('configuracoes')">Ajuda</button>
+        </div>
+
+        <p style="color: var(--text-muted); margin-bottom: 10px;">
+            Baixe uma cópia completa dos dados em arquivo JSON. Esse backup fica fora do navegador
+            e protege contra perda de dados caso o cache ou armazenamento do site seja apagado.
+        </p>
+
+        <div class="safe-backup-actions">
+            <button onclick="downloadFinanceBackupFile()">💾 Baixar Backup Agora</button>
+            <button class="secondary" onclick="copyFinanceBackupToClipboard()">📋 Copiar backup</button>
+            <button class="secondary" onclick="showPage('treinamento')">🎓 Como usar backup</button>
+        </div>
+
+        <div class="safe-backup-status" id="safeBackupStatus"></div>
+
+        <div class="safe-backup-warning">
+            Recomenda-se baixar um backup pelo menos uma vez por semana ou antes de limpar dados do navegador.
+            Guarde o arquivo em uma pasta segura, Google Drive, OneDrive ou pendrive.
+        </div>
+    `;
+
+    const finalReview = document.getElementById('finalAppReviewPanel');
+
+    if (finalReview && finalReview.parentNode === page) {
+        page.insertBefore(panel, finalReview);
+    } else {
+        page.appendChild(panel);
+    }
+
+    renderSafeBackupPanel();
+}
+
+if (typeof showPage === 'function' && !window.__showPageSafeBackupWrapped) {
+    window.__showPageSafeBackupWrapped = true;
+    const originalShowPageBeforeSafeBackup = showPage;
+
+    showPage = function(pageId) {
+        originalShowPageBeforeSafeBackup(pageId);
+
+        if (pageId === 'configuracoes') {
+            ensureSafeBackupPanel();
+        }
+    };
+}
+
+window.addEventListener('load', function() {
+    ensureSafeBackupPanel();
+});
