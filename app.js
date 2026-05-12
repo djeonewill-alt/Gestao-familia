@@ -761,12 +761,7 @@ function confirmTransaction(id) {
         }
 
         function renderCategorias() {
-            const html = data.categorias.map(c => `
-                <div class="list-item">
-                    <span>${c}</span>
-                    <button class="danger" style="padding: 6px 12px;" onclick="removeCategoria('${c}')">Remover</button>
-                </div>
-            `).join('');
+            const html = data.categorias.map(c => ` <div class="list-item"> <span>${c}</span> <button class="danger" style="padding: 6px 12px;" onclick="removeCategoria('${c}')">Remover</button> </div> `).join('');
             document.getElementById('listaCategorias').innerHTML = html || '<div class="empty-state">Nenhuma categoria cadastrada</div>';
         }
 
@@ -794,12 +789,7 @@ function confirmTransaction(id) {
         }
 
         function renderResponsaveis() {
-            const html = data.responsaveis.map(r => `
-                <div class="list-item">
-                    <span>${r}</span>
-                    <button class="danger" style="padding: 6px 12px;" onclick="removeResponsavel('${r}')">Remover</button>
-                </div>
-            `).join('');
+            const html = data.responsaveis.map(r => ` <div class="list-item"> <span>${r}</span> <button class="danger" style="padding: 6px 12px;" onclick="removeResponsavel('${r}')">Remover</button> </div> `).join('');
             document.getElementById('listaResponsaveis').innerHTML = html || '<div class="empty-state">Nenhum responsável cadastrado</div>';
         }
 
@@ -1099,32 +1089,7 @@ function getFirstInvoiceMonthForPurchase(card, purchaseDate) {
                     alertMsg = percentual >= 30 ? `<div class="alert alert-warning" style="margin-top: 10px;">⚠️ Você está usando ${percentual.toFixed(0)}% do limite!</div>` : '';
                 }
 
-                return `
-                    <div class="credit-card-box">
-                        <h3>${cartao.nome}</h3>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                            <span>Limite:</span>
-                            <span>${formatCurrency(cartao.limite)}</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                            <span>Usado:</span>
-                            <span>${formatCurrency(usado)}</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between;">
-                            <span>Disponível:</span>
-                            <span>${formatCurrency(disponivel)}</span>
-                        </div>
-                        <div class="limit-bar">
-                            <div class="limit-bar-fill ${barClass}" style="width: ${percentual}%"></div>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 13px;">
-                            <span>Fecha dia ${cartao.diaFechamento}</span>
-                            <span>Paga dia ${cartao.diaPagamento}</span>
-                        </div>
-                        ${alertMsg}
-                        <button class="danger" style="margin-top: 10px; padding: 8px 16px;" onclick="removeCartao(${cartao.id})">Remover Cartão</button>
-                    </div>
-                `;
+                return ` <div class="credit-card-box"> <h3>${cartao.nome}</h3> <div style="display: flex; justify-content: space-between; margin-bottom: 5px;"> <span>Limite:</span> <span>${formatCurrency(cartao.limite)}</span> </div> <div style="display: flex; justify-content: space-between; margin-bottom: 5px;"> <span>Usado:</span> <span>${formatCurrency(usado)}</span> </div> <div style="display: flex; justify-content: space-between;"> <span>Disponível:</span> <span>${formatCurrency(disponivel)}</span> </div> <div class="limit-bar"> <div class="limit-bar-fill ${barClass}" style="width: ${percentual}%"></div> </div> <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 13px;"> <span>Fecha dia ${cartao.diaFechamento}</span> <span>Paga dia ${cartao.diaPagamento}</span> </div> ${alertMsg} <button class="danger" style="margin-top: 10px; padding: 8px 16px;" onclick="removeCartao(${cartao.id})">Remover Cartão</button> </div> `;
             }).join('');
 
             container.innerHTML = html;
@@ -1260,8 +1225,7 @@ function getFirstInvoiceMonthForPurchase(card, purchaseDate) {
 
         function findDuplicateRecurringOccurrence(templateId, occurrenceDate) {
             if (!Array.isArray(data.transacoes)) return null;
-            return data.transacoes.find(t =>
-                t.origem === 'recorrencia-dinheiro' &&
+            return data.transacoes.find(t => t.origem === 'recorrencia-dinheiro' &&
                 String(t.recurringTemplateId) === String(templateId) &&
                 t.recurringOccurrenceDate === occurrenceDate
             ) || null;
@@ -1455,29 +1419,9 @@ function getFirstInvoiceMonthForPurchase(card, purchaseDate) {
                     ? ''
                     : `
                         ${isActive ? `<button class="secondary" onclick="pauseCashRecurringItem('${String(normalized.id)}')">Pausar</button>` : ''}
-                        ${isPaused ? `<button class="success" onclick="reactivateCashRecurringItem('${String(normalized.id)}')">Reativar</button>` : ''}
-                        <button class="danger" onclick="cancelCashRecurringItem('${String(normalized.id)}')">Cancelar</button>
-                    `;
+                        ${isPaused ? `<button class="success" onclick="reactivateCashRecurringItem('${String(normalized.id)}')">Reativar</button>` : ''} <button class="danger" onclick="cancelCashRecurringItem('${String(normalized.id)}')">Cancelar</button> `;
 
-                return `
-                    <div class="transaction-item cash-recurring-item">
-                        <div class="transaction-info">
-                            <div class="transaction-description">
-                                ${normalized.description}
-                                <span class="badge cat">${normalized.category}</span>
-                                <span class="badge resp">${normalized.responsible}</span>
-                                <span class="badge ${statusClass}">${getCashRecurringStatusLabel(normalized)}</span>
-                            </div>
-                            <div class="transaction-meta">${getCashRecurringFrequencyLabel(normalized)} - inicio ${formatDate(normalized.startDate)}${normalized.endDate ? ' - fim ' + formatDate(normalized.endDate) : ''}</div>
-                        </div>
-                        <div class="cash-recurring-actions">
-                            <div class="transaction-amount ${normalized.subTipo === 'entrada' ? 'income' : 'expense'}">
-                                ${normalized.subTipo === 'entrada' ? '+' : '-'} ${formatCurrency(normalized.amount)}
-                            </div>
-                            <div class="cash-recurring-buttons">${actions}</div>
-                        </div>
-                    </div>
-                `;
+                return ` <div class="transaction-item cash-recurring-item"> <div class="transaction-info"> <div class="transaction-description"> ${normalized.description} <span class="badge cat">${normalized.category}</span> <span class="badge resp">${normalized.responsible}</span> <span class="badge ${statusClass}">${getCashRecurringStatusLabel(normalized)}</span> </div> <div class="transaction-meta">${getCashRecurringFrequencyLabel(normalized)} - inicio ${formatDate(normalized.startDate)}${normalized.endDate ? ' - fim ' + formatDate(normalized.endDate) : ''}</div> </div> <div class="cash-recurring-actions"> <div class="transaction-amount ${normalized.subTipo === 'entrada' ? 'income' : 'expense'}"> ${normalized.subTipo === 'entrada' ? '+' : '-'} ${formatCurrency(normalized.amount)} </div> <div class="cash-recurring-buttons">${actions}</div> </div> </div> `;
             }).join('');
         }
 
@@ -1682,11 +1626,7 @@ function getFirstInvoiceMonthForPurchase(card, purchaseDate) {
             const cartao = data.cartoes.find(c => String(c.id) === String(cartaoId));
             const parcelas = gerarParcelas(dataCompra, valorTotal, numParcelas, cartao);
 
-            const preview = `
-                <strong>Preview:</strong><br>
-                ${numParcelas}x de ${formatCurrency(valorTotal / numParcelas)}<br>
-                Primeira parcela: ${parcelas[0].mesReferencia} (vence dia ${cartao.diaPagamento})<br>
-                Última parcela: ${parcelas[parcelas.length - 1].mesReferencia}
+            const preview = ` <strong>Preview:</strong><br> ${numParcelas}x de ${formatCurrency(valorTotal / numParcelas)}<br> Primeira parcela: ${parcelas[0].mesReferencia} (vence dia ${cartao.diaPagamento})<br> Última parcela: ${parcelas[parcelas.length - 1].mesReferencia}
             `;
 
             document.getElementById('cartaoPreview').innerHTML = preview;
@@ -1718,46 +1658,10 @@ function getFirstInvoiceMonthForPurchase(card, purchaseDate) {
                     const valorExibicao = isTransactionConfirmed(t) ? getTransactionActualValue(t) : getTransactionPlannedValue(t);
                     const dataExibicao = isTransactionConfirmed(t) ? (getTransactionActualDate(t) || getTransactionPlannedDate(t)) : getTransactionPlannedDate(t);
 
-                    return `
-                        <div class="transaction-item">
-                            <div class="transaction-info">
-                                <div class="transaction-description">
-                                    ${t.descricao}
-                                    <span class="badge cat">${t.categoria}</span>
-                                    <span class="badge resp">${t.responsavel}</span>
-                                    ${statusBadge}
-                                    ${getRecurringCashBadgeHtml(t)}
-                                </div>
-                                <div class="transaction-meta">${formatDate(dataExibicao || t.data)}</div>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end;">
-                                <div class="transaction-amount ${t.subTipo === 'entrada' ? 'income' : 'expense'}">
-                                    ${t.subTipo === 'entrada' ? '+' : '-'} ${formatCurrency(valorExibicao)}
-                                </div>
-                                ${confirmButton}
-                                <button class="danger" style="padding: 6px 12px;" onclick="deleteTransacao(${t.id})">???</button>
-                            </div>
-                        </div>
-                    `;
+                    return ` <div class="transaction-item"> <div class="transaction-info"> <div class="transaction-description"> ${t.descricao} <span class="badge cat">${t.categoria}</span> <span class="badge resp">${t.responsavel}</span> ${statusBadge}
+                                    ${getRecurringCashBadgeHtml(t)} </div> <div class="transaction-meta">${formatDate(dataExibicao || t.data)}</div> </div> <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end;"> <div class="transaction-amount ${t.subTipo === 'entrada' ? 'income' : 'expense'}"> ${t.subTipo === 'entrada' ? '+' : '-'} ${formatCurrency(valorExibicao)} </div> ${confirmButton} <button class="danger" style="padding: 6px 12px;" onclick="deleteTransacao(${t.id})">???</button> </div> </div> `;
                 } else {
-                    return `
-                        <div class="transaction-item">
-                            <div class="transaction-info">
-                                <div class="transaction-description">
-                                    ???? ${t.descricao}
-                                    <span class="badge">${t.cartaoNome}</span>
-                                    <span class="badge">${t.numParcelas}x</span>
-                                </div>
-                                <div class="transaction-meta">${formatDate(t.data)} - ${t.categoria} - ${t.responsavel}</div>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <div class="transaction-amount expense">
-                                    ${formatCurrency(t.valorTotal)}
-                                </div>
-                                <button class="danger" style="padding: 6px 12px;" onclick="deleteTransacao(${t.id})">???</button>
-                            </div>
-                        </div>
-                    `;
+                    return ` <div class="transaction-item"> <div class="transaction-info"> <div class="transaction-description"> ???? ${t.descricao} <span class="badge">${t.cartaoNome}</span> <span class="badge">${t.numParcelas}x</span> </div> <div class="transaction-meta">${formatDate(t.data)} - ${t.categoria} - ${t.responsavel}</div> </div> <div style="display: flex; align-items: center; gap: 10px;"> <div class="transaction-amount expense"> ${formatCurrency(t.valorTotal)} </div> <button class="danger" style="padding: 6px 12px;" onclick="deleteTransacao(${t.id})">???</button> </div> </div> `;
                 }
             }).join('');
 
@@ -1882,25 +1786,8 @@ function getFirstInvoiceMonthForPurchase(card, purchaseDate) {
                 const dataExibicao = isTransactionConfirmed(t) ? (getTransactionActualDate(t) || getTransactionPlannedDate(t)) : getTransactionPlannedDate(t);
                 const valorExibicao = isTransactionConfirmed(t) ? getTransactionActualValue(t) : getTransactionPlannedValue(t);
 
-                return `
-                    <div class="transaction-item">
-                        <div class="transaction-info">
-                            <div class="transaction-description">
-                                ${t.descricao}
-                                <span class="badge cat">${t.categoria}</span>
-                                ${statusBadge}
-                                ${getRecurringCashBadgeHtml(t)}
-                            </div>
-                            <div class="transaction-meta">${formatDate(dataExibicao || t.data)} - ${t.responsavel}</div>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end;">
-                            <div class="transaction-amount ${t.subTipo === 'entrada' ? 'income' : 'expense'}">
-                                ${t.subTipo === 'entrada' ? '+' : '-'} ${formatCurrency(valorExibicao)}
-                            </div>
-                            ${confirmButton}
-                        </div>
-                    </div>
-                `;
+                return ` <div class="transaction-item"> <div class="transaction-info"> <div class="transaction-description"> ${t.descricao} <span class="badge cat">${t.categoria}</span> ${statusBadge}
+                                ${getRecurringCashBadgeHtml(t)} </div> <div class="transaction-meta">${formatDate(dataExibicao || t.data)} - ${t.responsavel}</div> </div> <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end;"> <div class="transaction-amount ${t.subTipo === 'entrada' ? 'income' : 'expense'}"> ${t.subTipo === 'entrada' ? '+' : '-'} ${formatCurrency(valorExibicao)} </div> ${confirmButton} </div> </div> `;
             }).join('');
 
             container.innerHTML = html;
@@ -1974,21 +1861,7 @@ function getFirstInvoiceMonthForPurchase(card, purchaseDate) {
                 if (s.isCurrent) classes.push('current');
                 if (s.saldoProjetado < 0) classes.push('negative');
 
-                return `
-                    <div class="${classes.join(' ')}">
-                        <div class="week-projection-header">
-                            <strong>Semana ${s.numero}: ${s.inicio} - ${s.fim}</strong>
-                            <strong style="color: ${s.saldoProjetado >= 0 ? '#27ae60' : '#e74c3c'}">
-                                ${formatCurrency(s.saldoProjetado)}
-                            </strong>
-                        </div>
-                        <div class="week-projection-details">
-                            <div>&#128176; Entradas: <strong style="color: #27ae60">${formatCurrency(s.entradas)}</strong></div>
-                            <div>&#128184; Saidas: <strong style="color: #e74c3c">${formatCurrency(s.saidas)}</strong></div>
-                            <div>&#128202; Resultado: <strong>${formatCurrency(s.entradas - s.saidas)}</strong></div>
-                        </div>
-                    </div>
-                `;
+                return ` <div class="${classes.join(' ')}"> <div class="week-projection-header"> <strong>Semana ${s.numero}: ${s.inicio} - ${s.fim}</strong> <strong style="color: ${s.saldoProjetado >= 0 ? '#27ae60' : '#e74c3c'}"> ${formatCurrency(s.saldoProjetado)} </strong> </div> <div class="week-projection-details"> <div>&#128176; Entradas: <strong style="color: #27ae60">${formatCurrency(s.entradas)}</strong></div> <div>&#128184; Saidas: <strong style="color: #e74c3c">${formatCurrency(s.saidas)}</strong></div> <div>&#128202; Resultado: <strong>${formatCurrency(s.entradas - s.saidas)}</strong></div> </div> </div> `;
             }).join('');
 
             container.innerHTML = html;
@@ -2064,21 +1937,7 @@ function getFirstInvoiceMonthForPurchase(card, purchaseDate) {
             let total = 0;
             const html = data.listaMercado.map(p => {
                 total += p.preco;
-                return `
-                    <div class="market-item ${p.comprado ? 'checked' : ''}">
-                        <div style="display: flex; align-items: center; flex: 1;">
-                            <input type="checkbox" ${p.comprado ? 'checked' : ''} onchange="toggleProdutoComprado(${p.id})">
-                            <div>
-                                <div style="font-weight: 600;">${p.nome}</div>
-                                <div style="font-size: 12px; color: #7f8c8d;">${p.qtd}</div>
-                            </div>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <strong>${formatCurrency(p.preco)}</strong>
-                            <button class="danger" style="padding: 4px 8px; font-size: 12px;" onclick="removeProdutoLista(${p.id})">✕</button>
-                        </div>
-                    </div>
-                `;
+                return ` <div class="market-item ${p.comprado ? 'checked' : ''}"> <div style="display: flex; align-items: center; flex: 1;"> <input type="checkbox" ${p.comprado ? 'checked' : ''} onchange="toggleProdutoComprado(${p.id})"> <div> <div style="font-weight: 600;">${p.nome}</div> <div style="font-size: 12px; color: #7f8c8d;">${p.qtd}</div> </div> </div> <div style="display: flex; align-items: center; gap: 10px;"> <strong>${formatCurrency(p.preco)}</strong> <button class="danger" style="padding: 4px 8px; font-size: 12px;" onclick="removeProdutoLista(${p.id})">✕</button> </div> </div> `;
             }).join('');
 
             container.innerHTML = html;
@@ -2111,17 +1970,8 @@ function getFirstInvoiceMonthForPurchase(card, purchaseDate) {
                     }
                 }
 
-                return `
-                    <div class="list-item">
-                        <div>
-                            <div style="font-weight: 600;">${produto}</div>
-                            <div class="price-history">
-                                Último: ${formatCurrency(ultimo.preco)} (${formatDate(ultimo.data)})
-                                ${trend}
-                            </div>
-                        </div>
-                    </div>
-                `;
+                return ` <div class="list-item"> <div> <div style="font-weight: 600;">${produto}</div> <div class="price-history"> Último: ${formatCurrency(ultimo.preco)} (${formatDate(ultimo.data)})
+                                ${trend} </div> </div> </div> `;
             }).join('');
 
             container.innerHTML = html;
@@ -2433,18 +2283,7 @@ function getFirstInvoiceMonthForPurchase(card, purchaseDate) {
                     ? `<button onclick="deactivateCardRecurringItem('${String(item.id)}')" style="margin-top: 8px; background: #e67e22;">Desativar apos mes atual</button>`
                     : '';
 
-                return `
-                    <div class="transaction-item">
-                        <div>
-                            <strong>${item.description}</strong>
-                            <div style="font-size: 12px; color: #7f8c8d;">${card ? card.nome : item.cardName || 'Cartao'} - Inicio: ${item.startInvoiceMonth} - ${status}</div>
-                        </div>
-                        <div style="text-align: right;">
-                            <strong>${formatCurrency(Number(item.amount) || 0)}</strong>
-                            <div>${action}</div>
-                        </div>
-                    </div>
-                `;
+                return ` <div class="transaction-item"> <div> <strong>${item.description}</strong> <div style="font-size: 12px; color: #7f8c8d;">${card ? card.nome : item.cardName || 'Cartao'} - Inicio: ${item.startInvoiceMonth} - ${status}</div> </div> <div style="text-align: right;"> <strong>${formatCurrency(Number(item.amount) || 0)}</strong> <div>${action}</div> </div> </div> `;
             }).join('');
         }
 
@@ -2542,97 +2381,21 @@ function getFirstInvoiceMonthForPurchase(card, purchaseDate) {
 
                 const totalGeral = Object.values(subtotaisPorResponsavel).reduce((a, b) => a + b, 0);
                 const valorMeu = subtotaisPorResponsavel['Meu'] || 0;
-                const statusActions = `
-                    <div style="display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 15px;">
-                        <button onclick="updateCardInvoiceStatus('${String(cartao.id)}', '${mesRef}', 'aberta')" style="padding: 8px 12px;">Marcar aberta</button>
-                        <button onclick="updateCardInvoiceStatus('${String(cartao.id)}', '${mesRef}', 'fechada')" style="padding: 8px 12px; background: #f39c12;">Marcar fechada</button>
-                        <button onclick="updateCardInvoiceStatus('${String(cartao.id)}', '${mesRef}', 'paga')" style="padding: 8px 12px; background: #27ae60;">Marcar paga</button>
-                    </div>
-                `;
+                const statusActions = ` <div style="display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 15px;"> <button onclick="updateCardInvoiceStatus('${String(cartao.id)}', '${mesRef}', 'aberta')" style="padding: 8px 12px;">Marcar aberta</button> <button onclick="updateCardInvoiceStatus('${String(cartao.id)}', '${mesRef}', 'fechada')" style="padding: 8px 12px; background: #f39c12;">Marcar fechada</button> <button onclick="updateCardInvoiceStatus('${String(cartao.id)}', '${mesRef}', 'paga')" style="padding: 8px 12px; background: #27ae60;">Marcar paga</button> </div> `;
                 const paymentInfo = invoice?.paymentTransactionId
                     ? `<div style="font-size: 12px; color: #7f8c8d; margin-top: 6px;">Pagamento vinculado: ${invoice.paymentTransactionId}</div>`
                     : '';
 
                 if (compras.length === 0) {
-                    return `
-                        <div class="credit-card-box">
-                            <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
-                                <h3>${cartao.nome} - ${mesRef}</h3>
-                                ${getInvoiceStatusBadgeHtml(status)}
-                            </div>
-                            ${statusActions}
-                            <p style="opacity: 0.7;">Sem lancamentos neste mes</p>
-                            ${paymentInfo}
-                        </div>
-                    `;
+                    return ` <div class="credit-card-box"> <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;"> <h3>${cartao.nome} - ${mesRef}</h3> ${getInvoiceStatusBadgeHtml(status)} </div> ${statusActions} <p style="opacity: 0.7;">Sem lancamentos neste mes</p> ${paymentInfo} </div> `;
                 }
 
                 const responsaveisAtivos = data.responsaveis.filter(r => subtotaisPorResponsavel[r] > 0);
-                const linhasTabela = compras.map(c => `
-                    <tr>
-                        <td style="padding: 10px; border-bottom: 1px solid #ecf0f1;">
-                            <div style="font-weight: 600;">${c.descricao} (${c.parcela})</div>
-                            <div style="font-size: 11px; color: #7f8c8d;">${c.categoria} - ${c.origemLabel || c.origem || 'Item'}</div>
-                        </td>
-                        <td style="padding: 10px; border-bottom: 1px solid #ecf0f1;">${c.responsavel}</td>
-                        <td style="text-align: right; padding: 10px; border-bottom: 1px solid #ecf0f1;">${formatCurrency(c.valor)}</td>
-                    </tr>
-                `).join('');
+                const linhasTabela = compras.map(c => ` <tr> <td style="padding: 10px; border-bottom: 1px solid #ecf0f1;"> <div style="font-weight: 600;">${c.descricao} (${c.parcela})</div> <div style="font-size: 11px; color: #7f8c8d;">${c.categoria} - ${c.origemLabel || c.origem || 'Item'}</div> </td> <td style="padding: 10px; border-bottom: 1px solid #ecf0f1;">${c.responsavel}</td> <td style="text-align: right; padding: 10px; border-bottom: 1px solid #ecf0f1;">${formatCurrency(c.valor)}</td> </tr> `).join('');
 
-                const subtotaisHTML = responsaveisAtivos.map(r => `
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                        <span>${r}</span>
-                        <strong>${formatCurrency(subtotaisPorResponsavel[r])}</strong>
-                    </div>
-                `).join('');
+                const subtotaisHTML = responsaveisAtivos.map(r => ` <div style="display: flex; justify-content: space-between; margin-bottom: 6px;"> <span>${r}</span> <strong>${formatCurrency(subtotaisPorResponsavel[r])}</strong> </div> `).join('');
 
-                return `
-                    <div class="section" style="margin-bottom: 20px;">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap;">
-                            <div>
-                                <h2>${cartao.nome} - ${mesRef}</h2>
-                                <div style="font-size: 12px; color: #7f8c8d;">Vencimento: dia ${cartao.diaPagamento}/${mesRef.split('-')[1]}</div>
-                                ${paymentInfo}
-                            </div>
-                            <div style="text-align: right;">
-                                ${getInvoiceStatusBadgeHtml(status)}
-                                <div style="font-size: 20px; font-weight: 700; color: #e74c3c; margin-top: 6px;">${formatCurrency(totalGeral)}</div>
-                            </div>
-                        </div>
-
-                        ${statusActions}
-
-                        <div style="overflow-x: auto;">
-                            <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px;">
-                                <thead>
-                                    <tr>
-                                        <th style="width: 60%; text-align: left; padding: 10px; background: #667eea; color: white;">Descricao</th>
-                                        <th style="text-align: left; padding: 10px; background: #667eea; color: white;">Responsavel</th>
-                                        <th style="text-align: right; padding: 10px; background: #667eea; color: white;">Valor</th>
-                                    </tr>
-                                </thead>
-                                <tbody>${linhasTabela}</tbody>
-                            </table>
-                        </div>
-
-                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #667eea;">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                                <span>Total Geral da Fatura:</span>
-                                <strong style="color: #e74c3c;">${formatCurrency(totalGeral)}</strong>
-                            </div>
-                            ${subtotaisHTML}
-                            <div style="display: flex; justify-content: space-between; border-top: 1px solid #ddd; padding-top: 10px; margin-top: 10px;">
-                                <span>Valor Meu para o orcamento:</span>
-                                <strong style="color: #27ae60;">${formatCurrency(valorMeu)}</strong>
-                            </div>
-                            ${status === 'paga' ? '<div style="font-size: 12px; color: #27ae60; margin-top: 8px;">Fatura marcada como paga.</div>' : ''}
-                        </div>
-
-                        <button onclick="gerarLancamentoPagamentoFatura('${String(cartao.id)}', '${mesRef}')" style="margin-top: 15px; background: #27ae60;">
-                            Gerar Lancamento de Pagamento (${formatCurrency(valorMeu)})
-                        </button>
-                    </div>
-                `;
+                return ` <div class="section" style="margin-bottom: 20px;"> <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap;"> <div> <h2>${cartao.nome} - ${mesRef}</h2> <div style="font-size: 12px; color: #7f8c8d;">Vencimento: dia ${cartao.diaPagamento}/${mesRef.split('-')[1]}</div> ${paymentInfo} </div> <div style="text-align: right;"> ${getInvoiceStatusBadgeHtml(status)} <div style="font-size: 20px; font-weight: 700; color: #e74c3c; margin-top: 6px;">${formatCurrency(totalGeral)}</div> </div> </div> ${statusActions} <div style="overflow-x: auto;"> <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px;"> <thead> <tr> <th style="width: 60%; text-align: left; padding: 10px; background: #667eea; color: white;">Descricao</th> <th style="text-align: left; padding: 10px; background: #667eea; color: white;">Responsavel</th> <th style="text-align: right; padding: 10px; background: #667eea; color: white;">Valor</th> </tr> </thead> <tbody>${linhasTabela}</tbody> </table> </div> <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #667eea;"> <div style="display: flex; justify-content: space-between; margin-bottom: 8px;"> <span>Total Geral da Fatura:</span> <strong style="color: #e74c3c;">${formatCurrency(totalGeral)}</strong> </div> ${subtotaisHTML} <div style="display: flex; justify-content: space-between; border-top: 1px solid #ddd; padding-top: 10px; margin-top: 10px;"> <span>Valor Meu para o orcamento:</span> <strong style="color: #27ae60;">${formatCurrency(valorMeu)}</strong> </div> ${status === 'paga' ? '<div style="font-size: 12px; color: #27ae60; margin-top: 8px;">Fatura marcada como paga.</div>' : ''} </div> <button onclick="gerarLancamentoPagamentoFatura('${String(cartao.id)}', '${mesRef}')" style="margin-top: 15px; background: #27ae60;"> Gerar Lancamento de Pagamento (${formatCurrency(valorMeu)}) </button> </div> `;
             }).join('');
 
             container.innerHTML = html;
@@ -2651,16 +2414,14 @@ function findInvoicePaymentTransaction(invoice) {
         if (byId) return byId;
     }
 
-    const byInvoiceId = data.transacoes.find(t =>
-        t.tipo === 'dinheiro' &&
+    const byInvoiceId = data.transacoes.find(t => t.tipo === 'dinheiro' &&
         t.origem === 'fatura' &&
         t.invoiceId &&
         String(t.invoiceId) === String(invoice.id)
     );
     if (byInvoiceId) return byInvoiceId;
 
-    const byCardAndMonth = data.transacoes.find(t =>
-        t.tipo === 'dinheiro' &&
+    const byCardAndMonth = data.transacoes.find(t => t.tipo === 'dinheiro' &&
         t.origem === 'fatura' &&
         t.cardId &&
         String(t.cardId) === String(invoice.cardId) &&
@@ -2905,35 +2666,9 @@ function gerarLancamentoPagamentoFatura(cartaoId, mesRef) {
                     porMes[p.mesReferencia] += p.valor;
                 });
 
-                const mesesHTML = Object.entries(porMes).map(([mes, total]) => `
-                    <div style="background: #f8f9fa; padding: 10px; border-radius: 6px; margin-bottom: 8px;">
-                        <strong>${mes}</strong>: ${formatCurrency(total)}
-                    </div>
-                `).join('');
+                const mesesHTML = Object.entries(porMes).map(([mes, total]) => ` <div style="background: #f8f9fa; padding: 10px; border-radius: 6px; margin-bottom: 8px;"> <strong>${mes}</strong>: ${formatCurrency(total)} </div> `).join('');
 
-                return `
-                    <div class="simulator-option">
-                        <h3>${numParcelas}x de ${formatCurrency(valorParcela)}</h3>
-                        <div style="display: flex; justify-content: space-between; margin: 10px 0; font-size: 14px;">
-                            <span>Total:</span>
-                            <strong>${formatCurrency(valor)}</strong>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px;">
-                            <span>Primeira parcela:</span>
-                            <span>${parcelas[0].mesReferencia}</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 14px;">
-                            <span>Última parcela:</span>
-                            <span>${parcelas[numParcelas - 1].mesReferencia}</span>
-                        </div>
-                        <div style="border-top: 1px solid #ecf0f1; padding-top: 15px;">
-                            <strong style="font-size: 12px; color: #7f8c8d;">IMPACTO NAS FATURAS:</strong>
-                            <div style="margin-top: 10px;">
-                                ${mesesHTML}
-                            </div>
-                        </div>
-                    </div>
-                `;
+                return ` <div class="simulator-option"> <h3>${numParcelas}x de ${formatCurrency(valorParcela)}</h3> <div style="display: flex; justify-content: space-between; margin: 10px 0; font-size: 14px;"> <span>Total:</span> <strong>${formatCurrency(valor)}</strong> </div> <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px;"> <span>Primeira parcela:</span> <span>${parcelas[0].mesReferencia}</span> </div> <div style="display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 14px;"> <span>Última parcela:</span> <span>${parcelas[numParcelas - 1].mesReferencia}</span> </div> <div style="border-top: 1px solid #ecf0f1; padding-top: 15px;"> <strong style="font-size: 12px; color: #7f8c8d;">IMPACTO NAS FATURAS:</strong> <div style="margin-top: 10px;"> ${mesesHTML} </div> </div> </div> `;
             }).join('');
 
             container.innerHTML = html;
@@ -3534,88 +3269,13 @@ function renderDecisionSimulation(result) {
         ? `Atenção: neste cenário, o saldo fica abaixo do mínimo em <strong>${result.firstDangerMonth}</strong>.`
         : 'Neste cenário, o saldo não cai abaixo do mínimo definido.';
 
-    const summary = `
-        <div class="alert ${summaryClass}">
-            <strong>Resultado do cenário: ${scenario.name}</strong><br>
-            ${decisionText}<br><br>
-            Saldo final projetado: <strong>${formatCurrency(result.finalBalance)}</strong><br>
-            Menor saldo no período: <strong>${formatCurrency(result.lowestBalance)}</strong><br>
-            Saldo mínimo de segurança: <strong>${formatCurrency(minimumBalance)}</strong><br>
-            ${result.monthsUntilDanger ? `Meses até alerta: <strong>${result.monthsUntilDanger}</strong><br>` : ''}
-            Maior déficit mensal: <strong>${formatCurrency(result.maxMonthlyGap)}</strong><br>
-            Renda mensal sugerida para equilibrar o pior mês: <strong>${formatCurrency(result.recommendedMonthlyIncome)}</strong>
-        </div>
+    const summary = ` <div class="alert ${summaryClass}"> <strong>Resultado do cenário: ${scenario.name}</strong><br> ${decisionText}<br><br> Saldo final projetado: <strong>${formatCurrency(result.finalBalance)}</strong><br> Menor saldo no período: <strong>${formatCurrency(result.lowestBalance)}</strong><br> Saldo mínimo de segurança: <strong>${formatCurrency(minimumBalance)}</strong><br> ${result.monthsUntilDanger ? `Meses até alerta: <strong>${result.monthsUntilDanger}</strong><br>` : ''}
+            Maior déficit mensal: <strong>${formatCurrency(result.maxMonthlyGap)}</strong><br> Renda mensal sugerida para equilibrar o pior mês: <strong>${formatCurrency(result.recommendedMonthlyIncome)}</strong> </div> <div class="dashboard-cards"> <div class="card"> <h3>Total de Entradas</h3> <div class="value positive">${formatCurrency(result.totalIncome)}</div> <div class="subtext">No período simulado</div> </div> <div class="card"> <h3>Total de Saídas</h3> <div class="value negative">${formatCurrency(result.totalExpenses)}</div> <div class="subtext">Incluindo faturas se marcado</div> </div> <div class="card"> <h3>Faturas no Período</h3> <div class="value warning">${formatCurrency(result.totalCardInvoices)}</div> <div class="subtext">Responsável Meu</div> </div> <div class="card"> <h3>Valor Parcelado Recebido</h3> <div class="value positive">${formatCurrency(result.totalSeverance)}</div> <div class="subtext">Distribuído no cenário</div> </div> </div> `;
 
-        <div class="dashboard-cards">
-            <div class="card">
-                <h3>Total de Entradas</h3>
-                <div class="value positive">${formatCurrency(result.totalIncome)}</div>
-                <div class="subtext">No período simulado</div>
-            </div>
-            <div class="card">
-                <h3>Total de Saídas</h3>
-                <div class="value negative">${formatCurrency(result.totalExpenses)}</div>
-                <div class="subtext">Incluindo faturas se marcado</div>
-            </div>
-            <div class="card">
-                <h3>Faturas no Período</h3>
-                <div class="value warning">${formatCurrency(result.totalCardInvoices)}</div>
-                <div class="subtext">Responsável Meu</div>
-            </div>
-            <div class="card">
-                <h3>Valor Parcelado Recebido</h3>
-                <div class="value positive">${formatCurrency(result.totalSeverance)}</div>
-                <div class="subtext">Distribuído no cenário</div>
-            </div>
-        </div>
-    `;
-
-    const tableRows = rows.map(row => `
-        <tr>
-            <td style="padding: 8px; border-bottom: 1px solid #ecf0f1;">${row.monthRef}</td>
-            <td style="padding: 8px; border-bottom: 1px solid #ecf0f1; text-align:right;">${formatCurrency(row.openingBalance)}</td>
-            <td style="padding: 8px; border-bottom: 1px solid #ecf0f1; text-align:right; color:#27ae60;">
-                ${formatCurrency(row.income)}
-                <div style="font-size:11px; color:#7f8c8d;">
-                    Renda: ${formatCurrency(row.continuingIncome)} · Parcela: ${formatCurrency(row.severanceMonthly)} · Extra: ${formatCurrency(row.extraIncome)}
-                </div>
-            </td>
-            <td style="padding: 8px; border-bottom: 1px solid #ecf0f1; text-align:right; color:#e74c3c;">
-                ${formatCurrency(row.expenses)}
-                <div style="font-size:11px; color:#7f8c8d;">
-                    Essenciais: ${formatCurrency(row.essentialExpenses)} · Variáveis: ${formatCurrency(row.variableExpenses)} · Faturas: ${formatCurrency(row.cardInvoices)}
-                </div>
-            </td>
-            <td style="padding: 8px; border-bottom: 1px solid #ecf0f1; text-align:right; color:${row.result >= 0 ? '#27ae60' : '#e74c3c'};">${formatCurrency(row.result)}</td>
-            <td style="padding: 8px; border-bottom: 1px solid #ecf0f1; text-align:right;">
-                ${formatCurrency(row.requiredExtraIncomeToBreakEven)}
-                <div style="font-size:11px; color:#7f8c8d;">para equilibrar o mês</div>
-            </td>
-            <td style="padding: 8px; border-bottom: 1px solid #ecf0f1; text-align:right; color:${row.isDanger ? '#e74c3c' : '#2c3e50'};">${formatCurrency(row.closingBalance)}</td>
-        </tr>
-    `).join('');
+    const tableRows = rows.map(row => ` <tr> <td style="padding: 8px; border-bottom: 1px solid #ecf0f1;">${row.monthRef}</td> <td style="padding: 8px; border-bottom: 1px solid #ecf0f1; text-align:right;">${formatCurrency(row.openingBalance)}</td> <td style="padding: 8px; border-bottom: 1px solid #ecf0f1; text-align:right; color:#27ae60;"> ${formatCurrency(row.income)} <div style="font-size:11px; color:#7f8c8d;"> Renda: ${formatCurrency(row.continuingIncome)} · Parcela: ${formatCurrency(row.severanceMonthly)} · Extra: ${formatCurrency(row.extraIncome)} </div> </td> <td style="padding: 8px; border-bottom: 1px solid #ecf0f1; text-align:right; color:#e74c3c;"> ${formatCurrency(row.expenses)} <div style="font-size:11px; color:#7f8c8d;"> Essenciais: ${formatCurrency(row.essentialExpenses)} · Variáveis: ${formatCurrency(row.variableExpenses)} · Faturas: ${formatCurrency(row.cardInvoices)} </div> </td> <td style="padding: 8px; border-bottom: 1px solid #ecf0f1; text-align:right; color:${row.result >= 0 ? '#27ae60' : '#e74c3c'};">${formatCurrency(row.result)}</td> <td style="padding: 8px; border-bottom: 1px solid #ecf0f1; text-align:right;"> ${formatCurrency(row.requiredExtraIncomeToBreakEven)} <div style="font-size:11px; color:#7f8c8d;">para equilibrar o mês</div> </td> <td style="padding: 8px; border-bottom: 1px solid #ecf0f1; text-align:right; color:${row.isDanger ? '#e74c3c' : '#2c3e50'};">${formatCurrency(row.closingBalance)}</td> </tr> `).join('');
 
     container.innerHTML = `
-        ${summary}
-        <div style="overflow-x:auto;">
-            <table style="width:100%; background:white;">
-                <thead>
-                    <tr>
-                        <th style="text-align:left; padding: 8px; background:#f8f9fa;">Mês</th>
-                        <th style="text-align:right; padding: 8px; background:#f8f9fa;">Saldo Inicial</th>
-                        <th style="text-align:right; padding: 8px; background:#f8f9fa;">Entradas</th>
-                        <th style="text-align:right; padding: 8px; background:#f8f9fa;">Saídas</th>
-                        <th style="text-align:right; padding: 8px; background:#f8f9fa;">Resultado</th>
-                        <th style="text-align:right; padding: 8px; background:#f8f9fa;">Renda Necessária</th>
-                        <th style="text-align:right; padding: 8px; background:#f8f9fa;">Saldo Final</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${tableRows}
-                </tbody>
-            </table>
-        </div>
-    `;
+        ${summary} <div style="overflow-x:auto;"> <table style="width:100%; background:white;"> <thead> <tr> <th style="text-align:left; padding: 8px; background:#f8f9fa;">Mês</th> <th style="text-align:right; padding: 8px; background:#f8f9fa;">Saldo Inicial</th> <th style="text-align:right; padding: 8px; background:#f8f9fa;">Entradas</th> <th style="text-align:right; padding: 8px; background:#f8f9fa;">Saídas</th> <th style="text-align:right; padding: 8px; background:#f8f9fa;">Resultado</th> <th style="text-align:right; padding: 8px; background:#f8f9fa;">Renda Necessária</th> <th style="text-align:right; padding: 8px; background:#f8f9fa;">Saldo Final</th> </tr> </thead> <tbody> ${tableRows} </tbody> </table> </div> `;
 }
 
 function runDecisionSimulation() {
@@ -3700,20 +3360,7 @@ function renderDecisionScenarios() {
         return;
     }
 
-    container.innerHTML = scenarios.map(scenario => `
-        <div class="list-item">
-            <div>
-                <div style="font-weight:600;">${scenario.name}</div>
-                <div style="font-size:12px; color:#7f8c8d;">
-                    Início: ${scenario.startMonth} · Meses: ${scenario.months} · Saldo inicial: ${formatCurrency(Number(scenario.currentBalance) || 0)}
-                </div>
-            </div>
-            <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                <button class="secondary" style="padding: 6px 12px;" onclick="loadDecisionScenario('${scenario.id}')">Carregar</button>
-                <button class="danger" style="padding: 6px 12px;" onclick="deleteDecisionScenario('${scenario.id}')">Excluir</button>
-            </div>
-        </div>
-    `).join('');
+    container.innerHTML = scenarios.map(scenario => ` <div class="list-item"> <div> <div style="font-weight:600;">${scenario.name}</div> <div style="font-size:12px; color:#7f8c8d;"> Início: ${scenario.startMonth} · Meses: ${scenario.months} · Saldo inicial: ${formatCurrency(Number(scenario.currentBalance) || 0)} </div> </div> <div style="display:flex; gap:8px; flex-wrap:wrap;"> <button class="secondary" style="padding: 6px 12px;" onclick="loadDecisionScenario('${scenario.id}')">Carregar</button> <button class="danger" style="padding: 6px 12px;" onclick="deleteDecisionScenario('${scenario.id}')">Excluir</button> </div> </div> `).join('');
 }
 
 const originalInitBeforeDecisionSimulator = init;
@@ -3851,20 +3498,7 @@ function renderTrainingModule() {
     container.innerHTML = trainingSteps.map(step => {
         const checked = Boolean(progress[step.id]);
 
-        return `
-            <div class="list-item" style="align-items:flex-start;">
-                <div style="display:flex; gap:12px; flex:1;">
-                    <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleTrainingStep('${step.id}')" style="width:auto; margin-top:4px;">
-                    <div>
-                        <div style="font-weight:700; color:#2c3e50;">${step.title}</div>
-                        <div style="font-size:12px; color:#667eea; font-weight:600; margin:3px 0;">${step.area}</div>
-                        <div style="font-size:14px; color:#555; margin-bottom:6px;">${step.description}</div>
-                        <div style="font-size:13px; color:#7f8c8d;"><strong>Como fazer:</strong> ${step.action}</div>
-                    </div>
-                </div>
-                <span class="badge ${checked ? 'status-realizado' : 'status-planejado'}">${checked ? 'Concluído' : 'Pendente'}</span>
-            </div>
-        `;
+        return ` <div class="list-item" style="align-items:flex-start;"> <div style="display:flex; gap:12px; flex:1;"> <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleTrainingStep('${step.id}')" style="width:auto; margin-top:4px;"> <div> <div style="font-weight:700; color:#2c3e50;">${step.title}</div> <div style="font-size:12px; color:#667eea; font-weight:600; margin:3px 0;">${step.area}</div> <div style="font-size:14px; color:#555; margin-bottom:6px;">${step.description}</div> <div style="font-size:13px; color:#7f8c8d;"><strong>Como fazer:</strong> ${step.action}</div> </div> </div> <span class="badge ${checked ? 'status-realizado' : 'status-planejado'}">${checked ? 'Concluído' : 'Pendente'}</span> </div> `;
     }).join('');
 }
 
@@ -4116,54 +3750,14 @@ function renderDashboardSummary(summary) {
     const container = document.getElementById('dashboardSummaryCards');
     if (!container) return;
 
-    container.innerHTML = `
-        <div class="card">
-            <h3>Entradas do mês</h3>
-            <div class="value positive">${formatCurrency(summary.entradasTotal)}</div>
-            <div class="subtext">Confirmadas + previstas</div>
-        </div>
-        <div class="card">
-            <h3>Saídas do mês</h3>
-            <div class="value negative">${formatCurrency(summary.saidasTotal)}</div>
-            <div class="subtext">Confirmadas + previstas</div>
-        </div>
-        <div class="card">
-            <h3>Resultado projetado</h3>
-            <div class="value ${summary.resultado >= 0 ? 'positive' : 'negative'}">${formatCurrency(summary.resultado)}</div>
-            <div class="subtext">Entradas - saídas</div>
-        </div>
-        <div class="card">
-            <h3>Faturas no mês</h3>
-            <div class="value warning">${formatCurrency(summary.faturasMes)}</div>
-            <div class="subtext">Responsável Meu</div>
-        </div>
-    `;
+    container.innerHTML = ` <div class="card"> <h3>Entradas do mês</h3> <div class="value positive">${formatCurrency(summary.entradasTotal)}</div> <div class="subtext">Confirmadas + previstas</div> </div> <div class="card"> <h3>Saídas do mês</h3> <div class="value negative">${formatCurrency(summary.saidasTotal)}</div> <div class="subtext">Confirmadas + previstas</div> </div> <div class="card"> <h3>Resultado projetado</h3> <div class="value ${summary.resultado >= 0 ? 'positive' : 'negative'}">${formatCurrency(summary.resultado)}</div> <div class="subtext">Entradas - saídas</div> </div> <div class="card"> <h3>Faturas no mês</h3> <div class="value warning">${formatCurrency(summary.faturasMes)}</div> <div class="subtext">Responsável Meu</div> </div> `;
 }
 
 function renderDashboardPlannedConfirmed(summary) {
     const container = document.getElementById('dashboardPlannedConfirmed');
     if (!container) return;
 
-    container.innerHTML = `
-        <div class="dashboard-grid-two">
-            <div class="dashboard-insight-card">
-                <strong>Entradas</strong>
-                <table class="dashboard-mini-table">
-                    <tr><td>Confirmadas</td><td style="text-align:right; color: var(--success);">${formatCurrency(summary.entradasConfirmadas)}</td></tr>
-                    <tr><td>Previstas/Atrasadas</td><td style="text-align:right;">${formatCurrency(summary.entradasPrevistas)}</td></tr>
-                    <tr><td><strong>Total</strong></td><td style="text-align:right;"><strong>${formatCurrency(summary.entradasTotal)}</strong></td></tr>
-                </table>
-            </div>
-            <div class="dashboard-insight-card">
-                <strong>Saídas</strong>
-                <table class="dashboard-mini-table">
-                    <tr><td>Confirmadas</td><td style="text-align:right; color: var(--danger);">${formatCurrency(summary.saidasConfirmadas)}</td></tr>
-                    <tr><td>Previstas/Atrasadas</td><td style="text-align:right;">${formatCurrency(summary.saidasPrevistas)}</td></tr>
-                    <tr><td><strong>Total</strong></td><td style="text-align:right;"><strong>${formatCurrency(summary.saidasTotal)}</strong></td></tr>
-                </table>
-            </div>
-        </div>
-    `;
+    container.innerHTML = ` <div class="dashboard-grid-two"> <div class="dashboard-insight-card"> <strong>Entradas</strong> <table class="dashboard-mini-table"> <tr><td>Confirmadas</td><td style="text-align:right; color: var(--success);">${formatCurrency(summary.entradasConfirmadas)}</td></tr> <tr><td>Previstas/Atrasadas</td><td style="text-align:right;">${formatCurrency(summary.entradasPrevistas)}</td></tr> <tr><td><strong>Total</strong></td><td style="text-align:right;"><strong>${formatCurrency(summary.entradasTotal)}</strong></td></tr> </table> </div> <div class="dashboard-insight-card"> <strong>Saídas</strong> <table class="dashboard-mini-table"> <tr><td>Confirmadas</td><td style="text-align:right; color: var(--danger);">${formatCurrency(summary.saidasConfirmadas)}</td></tr> <tr><td>Previstas/Atrasadas</td><td style="text-align:right;">${formatCurrency(summary.saidasPrevistas)}</td></tr> <tr><td><strong>Total</strong></td><td style="text-align:right;"><strong>${formatCurrency(summary.saidasTotal)}</strong></td></tr> </table> </div> </div> `;
 }
 
 function renderDashboardCategories(summary) {
@@ -4183,17 +3777,7 @@ function renderDashboardCategories(summary) {
     container.innerHTML = entries.map(([category, value]) => {
         const percent = Math.round((value / max) * 100);
 
-        return `
-            <div class="list-item" style="display:block;">
-                <div style="display:flex; justify-content:space-between; gap:12px;">
-                    <strong>${category}</strong>
-                    <strong>${formatCurrency(value)}</strong>
-                </div>
-                <div class="dashboard-meter">
-                    <div class="dashboard-meter-fill" style="width:${percent}%"></div>
-                </div>
-            </div>
-        `;
+        return ` <div class="list-item" style="display:block;"> <div style="display:flex; justify-content:space-between; gap:12px;"> <strong>${category}</strong> <strong>${formatCurrency(value)}</strong> </div> <div class="dashboard-meter"> <div class="dashboard-meter-fill" style="width:${percent}%"></div> </div> </div> `;
     }).join('');
 }
 
@@ -4218,32 +3802,7 @@ function renderDashboardFutureWeeks() {
         });
     }
 
-    container.innerHTML = `
-        <div style="overflow-x:auto;">
-            <table class="dashboard-mini-table">
-                <thead>
-                    <tr>
-                        <th>Semana</th>
-                        <th style="text-align:right;">Saldo inicial</th>
-                        <th style="text-align:right;">Entradas</th>
-                        <th style="text-align:right;">Saídas</th>
-                        <th style="text-align:right;">Saldo final</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${rows.map(row => `
-                        <tr>
-                            <td>${row.label}</td>
-                            <td style="text-align:right;">${formatCurrency(row.opening)}</td>
-                            <td style="text-align:right; color: var(--success);">${formatCurrency(row.entradas)}</td>
-                            <td style="text-align:right; color: var(--danger);">${formatCurrency(row.saidas)}</td>
-                            <td style="text-align:right; color: ${row.closing >= 0 ? 'var(--success)' : 'var(--danger)'};">${formatCurrency(row.closing)}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        </div>
-    `;
+    container.innerHTML = ` <div style="overflow-x:auto;"> <table class="dashboard-mini-table"> <thead> <tr> <th>Semana</th> <th style="text-align:right;">Saldo inicial</th> <th style="text-align:right;">Entradas</th> <th style="text-align:right;">Saídas</th> <th style="text-align:right;">Saldo final</th> </tr> </thead> <tbody> ${rows.map(row => ` <tr> <td>${row.label}</td> <td style="text-align:right;">${formatCurrency(row.opening)}</td> <td style="text-align:right; color: var(--success);">${formatCurrency(row.entradas)}</td> <td style="text-align:right; color: var(--danger);">${formatCurrency(row.saidas)}</td> <td style="text-align:right; color: ${row.closing >= 0 ? 'var(--success)' : 'var(--danger)'};">${formatCurrency(row.closing)}</td> </tr> `).join('')} </tbody> </table> </div> `;
 }
 
 function renderDashboardFutureInvoices() {
@@ -4264,26 +3823,7 @@ function renderDashboardFutureInvoices() {
         rows.push({ monthRef, amount });
     }
 
-    container.innerHTML = `
-        <div style="overflow-x:auto;">
-            <table class="dashboard-mini-table">
-                <thead>
-                    <tr>
-                        <th>Mês</th>
-                        <th style="text-align:right;">Faturas previstas</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${rows.map(row => `
-                        <tr>
-                            <td>${row.monthRef}</td>
-                            <td style="text-align:right; color: var(--warning);">${formatCurrency(row.amount)}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        </div>
-    `;
+    container.innerHTML = ` <div style="overflow-x:auto;"> <table class="dashboard-mini-table"> <thead> <tr> <th>Mês</th> <th style="text-align:right;">Faturas previstas</th> </tr> </thead> <tbody> ${rows.map(row => ` <tr> <td>${row.monthRef}</td> <td style="text-align:right; color: var(--warning);">${formatCurrency(row.amount)}</td> </tr> `).join('')} </tbody> </table> </div> `;
 }
 
 function renderDashboardTopExpenses(summary) {
@@ -4299,19 +3839,7 @@ function renderDashboardTopExpenses(summary) {
         return;
     }
 
-    container.innerHTML = expenses.map(item => `
-        <div class="transaction-item">
-            <div class="transaction-info">
-                <div class="transaction-description">
-                    ${item.descricao}
-                    <span class="badge cat">${item.categoria}</span>
-                    <span class="badge status-planejado">${item.status}</span>
-                </div>
-                <div class="transaction-meta">${item.data ? formatDate(item.data) : ''}</div>
-            </div>
-            <div class="transaction-amount expense">${formatCurrency(item.valor)}</div>
-        </div>
-    `).join('');
+    container.innerHTML = expenses.map(item => ` <div class="transaction-item"> <div class="transaction-info"> <div class="transaction-description"> ${item.descricao} <span class="badge cat">${item.categoria}</span> <span class="badge status-planejado">${item.status}</span> </div> <div class="transaction-meta">${item.data ? formatDate(item.data) : ''}</div> </div> <div class="transaction-amount expense">${formatCurrency(item.valor)}</div> </div> `).join('');
 }
 
 function renderDashboard() {
@@ -4474,112 +4002,20 @@ function renderDashboardCardBI() {
         return;
     }
 
-    const summaryCards = `
-        <div class="card-bi-grid">
-            <div class="card">
-                <h3>Próximos 6 meses</h3>
-                <div class="value warning">${formatCurrency(bi.totalMeu)}</div>
-                <div class="subtext">Faturas responsável Meu</div>
-            </div>
-            <div class="card">
-                <h3>Próxima fatura</h3>
-                <div class="value warning">${formatCurrency(bi.nextInvoiceAmount)}</div>
-                <div class="subtext">Mês atual</div>
-            </div>
-            <div class="card">
-                <h3>Maior fatura</h3>
-                <div class="value negative">${formatCurrency(bi.highestInvoice.amount)}</div>
-                <div class="subtext">${bi.highestInvoice.cardName || 'Sem cartão'} · ${bi.highestInvoice.monthRef || '-'}</div>
-            </div>
-            <div class="card">
-                <h3>Recorrentes ativas</h3>
-                <div class="value">${bi.activeRecurring.length}</div>
-                <div class="subtext">Assinaturas mensais</div>
-            </div>
-            <div class="card">
-                <h3>Parcelamentos ativos</h3>
-                <div class="value">${bi.activeInstallments}</div>
-                <div class="subtext">Itens parcelados</div>
-            </div>
-            <div class="card">
-                <h3>Cartão mais pesado</h3>
-                <div class="value warning">${formatCurrency(bi.biggestCard.amount)}</div>
-                <div class="subtext">${bi.biggestCard.cardName || 'Sem dados'}</div>
-            </div>
-        </div>
-    `;
+    const summaryCards = ` <div class="card-bi-grid"> <div class="card"> <h3>Próximos 6 meses</h3> <div class="value warning">${formatCurrency(bi.totalMeu)}</div> <div class="subtext">Faturas responsável Meu</div> </div> <div class="card"> <h3>Próxima fatura</h3> <div class="value warning">${formatCurrency(bi.nextInvoiceAmount)}</div> <div class="subtext">Mês atual</div> </div> <div class="card"> <h3>Maior fatura</h3> <div class="value negative">${formatCurrency(bi.highestInvoice.amount)}</div> <div class="subtext">${bi.highestInvoice.cardName || 'Sem cartão'} · ${bi.highestInvoice.monthRef || '-'}</div> </div> <div class="card"> <h3>Recorrentes ativas</h3> <div class="value">${bi.activeRecurring.length}</div> <div class="subtext">Assinaturas mensais</div> </div> <div class="card"> <h3>Parcelamentos ativos</h3> <div class="value">${bi.activeInstallments}</div> <div class="subtext">Itens parcelados</div> </div> <div class="card"> <h3>Cartão mais pesado</h3> <div class="value warning">${formatCurrency(bi.biggestCard.amount)}</div> <div class="subtext">${bi.biggestCard.cardName || 'Sem dados'}</div> </div> </div> `;
 
-    const monthTable = `
-        <div style="overflow-x:auto;">
-            <table class="dashboard-mini-table">
-                <thead>
-                    <tr>
-                        <th>Mês</th>
-                        <th style="text-align:right;">Total Meu</th>
-                        <th style="text-align:right;">Total Geral</th>
-                        <th>Detalhe por cartão</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${bi.monthRows.map(row => `
-                        <tr>
-                            <td>${row.monthRef}</td>
-                            <td style="text-align:right; color: var(--warning);">${formatCurrency(row.totalMeu)}</td>
-                            <td style="text-align:right;">${formatCurrency(row.totalAll)}</td>
-                            <td>
-                                ${row.cards.map(card => `
-                                    <span class="card-bi-pill">${card.cardName}: ${formatCurrency(card.meu)}</span>
-                                `).join(' ')}
-                            </td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        </div>
-    `;
+    const monthTable = ` <div style="overflow-x:auto;"> <table class="dashboard-mini-table"> <thead> <tr> <th>Mês</th> <th style="text-align:right;">Total Meu</th> <th style="text-align:right;">Total Geral</th> <th>Detalhe por cartão</th> </tr> </thead> <tbody> ${bi.monthRows.map(row => ` <tr> <td>${row.monthRef}</td> <td style="text-align:right; color: var(--warning);">${formatCurrency(row.totalMeu)}</td> <td style="text-align:right;">${formatCurrency(row.totalAll)}</td> <td> ${row.cards.map(card => ` <span class="card-bi-pill">${card.cardName}: ${formatCurrency(card.meu)}</span> `).join(' ')} </td> </tr> `).join('')} </tbody> </table> </div> `;
 
     const recurringList = bi.activeRecurring.length
-        ? bi.activeRecurring.slice(0, 8).map(item => `
-            <div class="card-bi-row">
-                <div>
-                    <strong>${item.description}</strong><br>
-                    <span>${item.cardName || 'Cartão'} · início ${item.startInvoiceMonth}</span>
-                </div>
-                <strong>${formatCurrency(Number(item.amount) || 0)}</strong>
-            </div>
-        `).join('')
+        ? bi.activeRecurring.slice(0, 8).map(item => ` <div class="card-bi-row"> <div> <strong>${item.description}</strong><br> <span>${item.cardName || 'Cartão'} · início ${item.startInvoiceMonth}</span> </div> <strong>${formatCurrency(Number(item.amount) || 0)}</strong> </div> `).join('')
         : '<div class="empty-state">Nenhuma recorrente ativa</div>';
 
     const cardRanking = Object.values(bi.cardTotals)
         .sort((a, b) => b.totalMeu - a.totalMeu)
-        .map(item => `
-            <div class="card-bi-row">
-                <div>
-                    <strong>${item.card.nome}</strong><br>
-                    <span>Total geral: ${formatCurrency(item.totalAll)}</span>
-                </div>
-                <strong>${formatCurrency(item.totalMeu)}</strong>
-            </div>
-        `).join('');
+        .map(item => ` <div class="card-bi-row"> <div> <strong>${item.card.nome}</strong><br> <span>Total geral: ${formatCurrency(item.totalAll)}</span> </div> <strong>${formatCurrency(item.totalMeu)}</strong> </div> `).join('');
 
     container.innerHTML = `
-        ${summaryCards}
-        <div class="dashboard-grid-two">
-            <div class="dashboard-insight-card">
-                <strong>Faturas mês a mês</strong>
-                <div style="margin-top: 12px;">${monthTable}</div>
-            </div>
-            <div class="dashboard-insight-card">
-                <strong>Ranking por cartão</strong>
-                <div class="card-bi-list" style="margin-top: 12px;">${cardRanking || '<div class="empty-state">Sem dados</div>'}</div>
-
-                <div style="height: 16px;"></div>
-
-                <strong>Recorrentes ativas</strong>
-                <div class="card-bi-list" style="margin-top: 12px;">${recurringList}</div>
-            </div>
-        </div>
-    `;
+        ${summaryCards} <div class="dashboard-grid-two"> <div class="dashboard-insight-card"> <strong>Faturas mês a mês</strong> <div style="margin-top: 12px;">${monthTable}</div> </div> <div class="dashboard-insight-card"> <strong>Ranking por cartão</strong> <div class="card-bi-list" style="margin-top: 12px;">${cardRanking || '<div class="empty-state">Sem dados</div>'}</div> <div style="height: 16px;"></div> <strong>Recorrentes ativas</strong> <div class="card-bi-list" style="margin-top: 12px;">${recurringList}</div> </div> </div> `;
 }
 
 
@@ -4719,17 +4155,7 @@ function renderCategoryRankingList(entries, emptyText) {
     return entries.map(([category, value]) => {
         const percent = Math.round((value / max) * 100);
 
-        return `
-            <div class="market-bi-row" style="display:block;">
-                <div style="display:flex; justify-content:space-between; gap:12px;">
-                    <strong>${category}</strong>
-                    <strong>${formatCurrency(value)}</strong>
-                </div>
-                <div class="dashboard-meter">
-                    <div class="dashboard-meter-fill" style="width:${percent}%"></div>
-                </div>
-            </div>
-        `;
+        return ` <div class="market-bi-row" style="display:block;"> <div style="display:flex; justify-content:space-between; gap:12px;"> <strong>${category}</strong> <strong>${formatCurrency(value)}</strong> </div> <div class="dashboard-meter"> <div class="dashboard-meter-fill" style="width:${percent}%"></div> </div> </div> `;
     }).join('');
 }
 
@@ -4747,15 +4173,7 @@ function renderPriceTrendList(trends) {
 
         const arrow = item.diff > 0 ? '↑' : item.diff < 0 ? '↓' : '━';
 
-        return `
-            <div class="market-bi-row">
-                <div>
-                    <strong>${item.produto}</strong><br>
-                    <span>${formatCurrency(item.previousPrice)} → ${formatCurrency(item.latestPrice)}</span>
-                </div>
-                <div class="${trendClass}">${arrow} ${Math.abs(item.percent).toFixed(0)}%</div>
-            </div>
-        `;
+        return ` <div class="market-bi-row"> <div> <strong>${item.produto}</strong><br> <span>${formatCurrency(item.previousPrice)} → ${formatCurrency(item.latestPrice)}</span> </div> <div class="${trendClass}">${arrow} ${Math.abs(item.percent).toFixed(0)}%</div> </div> `;
     }).join('');
 }
 
@@ -4769,72 +4187,10 @@ function renderDashboardMarketCategoryBI() {
 
     const bi = calculateMarketCategoryBI(monthRef);
 
-    const summaryCards = `
-        <div class="market-bi-grid">
-            <div class="card">
-                <h3>Mercado no mês</h3>
-                <div class="value warning">${formatCurrency(bi.marketTotal)}</div>
-                <div class="subtext">${bi.marketShare.toFixed(0)}% das saídas do mês</div>
-            </div>
-            <div class="card">
-                <h3>Média semanal mercado</h3>
-                <div class="value">${formatCurrency(bi.weeklyAverageMarket)}</div>
-                <div class="subtext">Estimativa pelo mês analisado</div>
-            </div>
-            <div class="card">
-                <h3>Lista atual</h3>
-                <div class="value">${formatCurrency(bi.listTotal)}</div>
-                <div class="subtext">Total estimado da lista</div>
-            </div>
-            <div class="card">
-                <h3>Pendente na lista</h3>
-                <div class="value warning">${formatCurrency(bi.listPendingTotal)}</div>
-                <div class="subtext">Itens ainda não marcados</div>
-            </div>
-            <div class="card">
-                <h3>Categoria mais pesada</h3>
-                <div class="value negative">${formatCurrency(bi.highestCategory.amount)}</div>
-                <div class="subtext">${bi.highestCategory.name}</div>
-            </div>
-            <div class="card">
-                <h3>Preços subindo</h3>
-                <div class="value negative">${bi.trends.up}</div>
-                <div class="subtext">Produtos com alta no histórico</div>
-            </div>
-        </div>
-    `;
+    const summaryCards = ` <div class="market-bi-grid"> <div class="card"> <h3>Mercado no mês</h3> <div class="value warning">${formatCurrency(bi.marketTotal)}</div> <div class="subtext">${bi.marketShare.toFixed(0)}% das saídas do mês</div> </div> <div class="card"> <h3>Média semanal mercado</h3> <div class="value">${formatCurrency(bi.weeklyAverageMarket)}</div> <div class="subtext">Estimativa pelo mês analisado</div> </div> <div class="card"> <h3>Lista atual</h3> <div class="value">${formatCurrency(bi.listTotal)}</div> <div class="subtext">Total estimado da lista</div> </div> <div class="card"> <h3>Pendente na lista</h3> <div class="value warning">${formatCurrency(bi.listPendingTotal)}</div> <div class="subtext">Itens ainda não marcados</div> </div> <div class="card"> <h3>Categoria mais pesada</h3> <div class="value negative">${formatCurrency(bi.highestCategory.amount)}</div> <div class="subtext">${bi.highestCategory.name}</div> </div> <div class="card"> <h3>Preços subindo</h3> <div class="value negative">${bi.trends.up}</div> <div class="subtext">Produtos com alta no histórico</div> </div> </div> `;
 
     container.innerHTML = `
-        ${summaryCards}
-
-        <div class="market-bi-detail-grid">
-            <div class="dashboard-insight-card">
-                <strong>Ranking de despesas por categoria</strong>
-                <div style="margin-top: 12px;">
-                    ${renderCategoryRankingList(bi.categoryRanking, 'Nenhuma despesa encontrada neste mês')}
-                </div>
-            </div>
-
-            <div class="dashboard-insight-card">
-                <strong>Mercado por subcategoria</strong>
-                <div style="margin-top: 12px;">
-                    ${renderCategoryRankingList(bi.marketRanking, 'Nenhuma despesa de mercado encontrada neste mês')}
-                </div>
-            </div>
-        </div>
-
-        <div style="height: 16px;"></div>
-
-        <div class="dashboard-insight-card">
-            <strong>Tendência de preços</strong>
-            <div style="display:flex; gap:8px; flex-wrap:wrap; margin: 10px 0 12px;">
-                <span class="card-bi-pill">Subindo: ${bi.trends.up}</span>
-                <span class="card-bi-pill">Caindo: ${bi.trends.down}</span>
-                <span class="card-bi-pill">Estáveis: ${bi.trends.same}</span>
-            </div>
-            ${renderPriceTrendList(bi.trends)}
-        </div>
-    `;
+        ${summaryCards} <div class="market-bi-detail-grid"> <div class="dashboard-insight-card"> <strong>Ranking de despesas por categoria</strong> <div style="margin-top: 12px;"> ${renderCategoryRankingList(bi.categoryRanking, 'Nenhuma despesa encontrada neste mês')} </div> </div> <div class="dashboard-insight-card"> <strong>Mercado por subcategoria</strong> <div style="margin-top: 12px;"> ${renderCategoryRankingList(bi.marketRanking, 'Nenhuma despesa de mercado encontrada neste mês')} </div> </div> </div> <div style="height: 16px;"></div> <div class="dashboard-insight-card"> <strong>Tendência de preços</strong> <div style="display:flex; gap:8px; flex-wrap:wrap; margin: 10px 0 12px;"> <span class="card-bi-pill">Subindo: ${bi.trends.up}</span> <span class="card-bi-pill">Caindo: ${bi.trends.down}</span> <span class="card-bi-pill">Estáveis: ${bi.trends.same}</span> </div> ${renderPriceTrendList(bi.trends)} </div> `;
 }
 
 
@@ -4892,17 +4248,7 @@ function findDecisionScenarioById(id) {
 function renderDecisionComparisonCard(label, result) {
     const scenario = result.scenario;
 
-    return `
-        <div class="decision-comparison-card">
-            <h4>${label}: ${scenario.name || 'Cenário sem nome'}</h4>
-            <div>Período: <strong>${scenario.startMonth}</strong> por <strong>${scenario.months}</strong> meses</div>
-            <div>Saldo final: <strong>${formatCurrency(result.finalBalance)}</strong></div>
-            <div>Menor saldo: <strong>${formatCurrency(result.lowestBalance)}</strong></div>
-            <div>Mês de risco: <strong>${result.firstDangerMonth || 'Não chegou ao risco'}</strong></div>
-            <div>Renda sugerida: <strong>${formatCurrency(result.recommendedMonthlyIncome || 0)}</strong></div>
-            <div>Faturas no período: <strong>${formatCurrency(result.totalCardInvoices || 0)}</strong></div>
-        </div>
-    `;
+    return ` <div class="decision-comparison-card"> <h4>${label}: ${scenario.name || 'Cenário sem nome'}</h4> <div>Período: <strong>${scenario.startMonth}</strong> por <strong>${scenario.months}</strong> meses</div> <div>Saldo final: <strong>${formatCurrency(result.finalBalance)}</strong></div> <div>Menor saldo: <strong>${formatCurrency(result.lowestBalance)}</strong></div> <div>Mês de risco: <strong>${result.firstDangerMonth || 'Não chegou ao risco'}</strong></div> <div>Renda sugerida: <strong>${formatCurrency(result.recommendedMonthlyIncome || 0)}</strong></div> <div>Faturas no período: <strong>${formatCurrency(result.totalCardInvoices || 0)}</strong></div> </div> `;
 }
 
 function compareDecisionScenarios() {
@@ -4952,49 +4298,8 @@ function compareDecisionScenarios() {
 
     const summaryClass = finalDifference >= 0 ? 'alert-success' : 'alert-warning';
 
-    container.innerHTML = `
-        <div class="alert ${summaryClass}">
-            <strong>Comparação final:</strong><br>
-            Diferença de saldo final entre B e A:
-            <span class="${finalDifference >= 0 ? 'decision-difference-positive' : 'decision-difference-negative'}">${formatCurrency(finalDifference)}</span><br>
-            Diferença na renda mensal sugerida:
-            <span class="${recommendedDifference <= 0 ? 'decision-difference-positive' : 'decision-difference-negative'}">${formatCurrency(recommendedDifference)}</span>
-        </div>
-
-        <div class="decision-comparison-grid">
-            ${renderDecisionComparisonCard('Cenário A', resultA)}
-            ${renderDecisionComparisonCard('Cenário B', resultB)}
-        </div>
-
-        <div style="overflow-x:auto;">
-            <table class="dashboard-mini-table">
-                <thead>
-                    <tr>
-                        <th>Mês</th>
-                        <th style="text-align:right;">Resultado A</th>
-                        <th style="text-align:right;">Saldo A</th>
-                        <th style="text-align:right;">Resultado B</th>
-                        <th style="text-align:right;">Saldo B</th>
-                        <th style="text-align:right;">Diferença B - A</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${rows.map(row => `
-                        <tr>
-                            <td>${row.monthRef}</td>
-                            <td style="text-align:right;">${row.resultMonthA !== null ? formatCurrency(row.resultMonthA) : '-'}</td>
-                            <td style="text-align:right;">${row.balanceA !== null ? formatCurrency(row.balanceA) : '-'}</td>
-                            <td style="text-align:right;">${row.resultMonthB !== null ? formatCurrency(row.resultMonthB) : '-'}</td>
-                            <td style="text-align:right;">${row.balanceB !== null ? formatCurrency(row.balanceB) : '-'}</td>
-                            <td style="text-align:right;" class="${row.difference >= 0 ? 'decision-difference-positive' : 'decision-difference-negative'}">
-                                ${row.difference !== null ? formatCurrency(row.difference) : '-'}
-                            </td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        </div>
-    `;
+    container.innerHTML = ` <div class="alert ${summaryClass}"> <strong>Comparação final:</strong><br> Diferença de saldo final entre B e A: <span class="${finalDifference >= 0 ? 'decision-difference-positive' : 'decision-difference-negative'}">${formatCurrency(finalDifference)}</span><br> Diferença na renda mensal sugerida: <span class="${recommendedDifference <= 0 ? 'decision-difference-positive' : 'decision-difference-negative'}">${formatCurrency(recommendedDifference)}</span> </div> <div class="decision-comparison-grid"> ${renderDecisionComparisonCard('Cenário A', resultA)}
+            ${renderDecisionComparisonCard('Cenário B', resultB)} </div> <div style="overflow-x:auto;"> <table class="dashboard-mini-table"> <thead> <tr> <th>Mês</th> <th style="text-align:right;">Resultado A</th> <th style="text-align:right;">Saldo A</th> <th style="text-align:right;">Resultado B</th> <th style="text-align:right;">Saldo B</th> <th style="text-align:right;">Diferença B - A</th> </tr> </thead> <tbody> ${rows.map(row => ` <tr> <td>${row.monthRef}</td> <td style="text-align:right;">${row.resultMonthA !== null ? formatCurrency(row.resultMonthA) : '-'}</td> <td style="text-align:right;">${row.balanceA !== null ? formatCurrency(row.balanceA) : '-'}</td> <td style="text-align:right;">${row.resultMonthB !== null ? formatCurrency(row.resultMonthB) : '-'}</td> <td style="text-align:right;">${row.balanceB !== null ? formatCurrency(row.balanceB) : '-'}</td> <td style="text-align:right;" class="${row.difference >= 0 ? 'decision-difference-positive' : 'decision-difference-negative'}"> ${row.difference !== null ? formatCurrency(row.difference) : '-'} </td> </tr> `).join('')} </tbody> </table> </div> `;
 }
 
 
@@ -5219,43 +4524,7 @@ function renderTrainingModuleV2() {
         const stepsHtml = module.steps.map(step => '<li>' + step + '</li>').join('');
         const checklistHtml = module.checklist.map(item => '<li>' + item + '</li>').join('');
 
-        return `
-            <div class="training-module-card ${checked ? 'completed' : ''}">
-                <div class="training-module-header">
-                    <div>
-                        <div class="training-module-title">${module.title}</div>
-                        <div class="training-module-area">${module.area}</div>
-                    </div>
-                    <span class="badge ${checked ? 'status-realizado' : 'status-planejado'}">${checked ? 'Aprendido' : 'Pendente'}</span>
-                </div>
-
-                <div class="training-module-box">
-                    <strong>Objetivo</strong>
-                    <p>${module.objective}</p>
-                    <p>${module.explanation}</p>
-                </div>
-
-                <div class="training-module-body">
-                    <div class="training-module-box">
-                        <strong>Passo a passo</strong>
-                        <ol>${stepsHtml}</ol>
-                    </div>
-                    <div class="training-module-box">
-                        <strong>Exemplo prático</strong>
-                        <p>${module.example}</p>
-                        <strong>Checklist</strong>
-                        <ul>${checklistHtml}</ul>
-                    </div>
-                </div>
-
-                <div class="training-module-actions">
-                    <label class="training-module-check">
-                        <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleTrainingStep('${module.id}')">
-                        Marcar este módulo como aprendido
-                    </label>
-                </div>
-            </div>
-        `;
+        return ` <div class="training-module-card ${checked ? 'completed' : ''}"> <div class="training-module-header"> <div> <div class="training-module-title">${module.title}</div> <div class="training-module-area">${module.area}</div> </div> <span class="badge ${checked ? 'status-realizado' : 'status-planejado'}">${checked ? 'Aprendido' : 'Pendente'}</span> </div> <div class="training-module-box"> <strong>Objetivo</strong> <p>${module.objective}</p> <p>${module.explanation}</p> </div> <div class="training-module-body"> <div class="training-module-box"> <strong>Passo a passo</strong> <ol>${stepsHtml}</ol> </div> <div class="training-module-box"> <strong>Exemplo prático</strong> <p>${module.example}</p> <strong>Checklist</strong> <ul>${checklistHtml}</ul> </div> </div> <div class="training-module-actions"> <label class="training-module-check"> <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleTrainingStep('${module.id}')"> Marcar este módulo como aprendido </label> </div> </div> `;
     }).join('');
 }
 
@@ -5367,17 +4636,7 @@ function showContextHelp(helpId) {
 
     const itemsHtml = help.items.map(item => '<li>' + item + '</li>').join('');
 
-    modal.innerHTML = `
-        <div class="context-help-card">
-            <h3>${help.title}</h3>
-            <p>${help.text}</p>
-            <ul>${itemsHtml}</ul>
-            <div class="context-help-actions">
-                <button class="secondary" onclick="openTrainingFromHelp('${help.trainingId}')">Ver no treinamento</button>
-                <button onclick="closeContextHelp()">Entendi</button>
-            </div>
-        </div>
-    `;
+    modal.innerHTML = ` <div class="context-help-card"> <h3>${help.title}</h3> <p>${help.text}</p> <ul>${itemsHtml}</ul> <div class="context-help-actions"> <button class="secondary" onclick="openTrainingFromHelp('${help.trainingId}')">Ver no treinamento</button> <button onclick="closeContextHelp()">Entendi</button> </div> </div> `;
 
     modal.addEventListener('click', function(event) {
         if (event.target === modal) {
@@ -5521,12 +4780,7 @@ function initializeViewModeToggle() {
         button.type = 'button';
         button.className = 'view-mode-toggle';
         button.onclick = toggleViewMode;
-        button.innerHTML = `
-            <span class="view-mode-dot"></span>
-            <span id="viewModeToggleLabel">Modo Clean</span>
-            <span style="opacity:.55;">·</span>
-            <span id="viewModeToggleHint" style="opacity:.75;">Visão simplificada</span>
-        `;
+        button.innerHTML = ` <span class="view-mode-dot"></span> <span id="viewModeToggleLabel">Modo Clean</span> <span style="opacity:.55;">·</span> <span id="viewModeToggleHint" style="opacity:.75;">Visão simplificada</span> `;
 
         document.body.appendChild(button);
     }
@@ -5739,39 +4993,10 @@ function renderFinalAppReview() {
         const cls = item.status.ok ? 'final-review-ok' : 'final-review-warning';
         const icon = item.status.ok ? '✅' : '⚠️';
 
-        return `
-            <div class="final-review-item">
-                <strong>${icon} ${item.title}</strong>
-                <span class="${cls}">${item.status.text}</span>
-            </div>
-        `;
+        return ` <div class="final-review-item"> <strong>${icon} ${item.title}</strong> <span class="${cls}">${item.status.text}</span> </div> `;
     }).join('');
 
-    container.innerHTML = `
-        <div class="alert ${summaryClass}">
-            <strong>Resultado da revisão:</strong><br>
-            ${criticalWarnings === 0 ? 'O núcleo funcional do app está estruturado e pronto para testes de uso real.' : 'Há pontos que merecem revisão antes do uso intenso.'}<br>
-            Gerado em: ${result.generatedAt}
-        </div>
-
-        <div class="final-review-grid">
-            ${reviewHtml}
-        </div>
-
-        <div class="dashboard-insight-card">
-            <strong>Métricas atuais</strong>
-            <table class="dashboard-mini-table">
-                <tr><td>Transações</td><td style="text-align:right;">${result.metrics.transacoes}</td></tr>
-                <tr><td>Cartões</td><td style="text-align:right;">${result.metrics.cartoes}</td></tr>
-                <tr><td>Itens de fatura</td><td style="text-align:right;">${result.metrics.cardItems}</td></tr>
-                <tr><td>Recorrentes ativas</td><td style="text-align:right;">${result.metrics.recorrentesAtivas}</td></tr>
-                <tr><td>Faturas registradas</td><td style="text-align:right;">${result.metrics.faturas}</td></tr>
-                <tr><td>Cenários salvos</td><td style="text-align:right;">${result.metrics.cenariosSalvos}</td></tr>
-                <tr><td>Lançamentos atrasados</td><td style="text-align:right;">${result.metrics.lancamentosAtrasados}</td></tr>
-                <tr><td>Modo visual</td><td style="text-align:right;">${result.metrics.viewMode}</td></tr>
-            </table>
-        </div>
-    `;
+    container.innerHTML = ` <div class="alert ${summaryClass}"> <strong>Resultado da revisão:</strong><br> ${criticalWarnings === 0 ? 'O núcleo funcional do app está estruturado e pronto para testes de uso real.' : 'Há pontos que merecem revisão antes do uso intenso.'}<br> Gerado em: ${result.generatedAt} </div> <div class="final-review-grid"> ${reviewHtml} </div> <div class="dashboard-insight-card"> <strong>Métricas atuais</strong> <table class="dashboard-mini-table"> <tr><td>Transações</td><td style="text-align:right;">${result.metrics.transacoes}</td></tr> <tr><td>Cartões</td><td style="text-align:right;">${result.metrics.cartoes}</td></tr> <tr><td>Itens de fatura</td><td style="text-align:right;">${result.metrics.cardItems}</td></tr> <tr><td>Recorrentes ativas</td><td style="text-align:right;">${result.metrics.recorrentesAtivas}</td></tr> <tr><td>Faturas registradas</td><td style="text-align:right;">${result.metrics.faturas}</td></tr> <tr><td>Cenários salvos</td><td style="text-align:right;">${result.metrics.cenariosSalvos}</td></tr> <tr><td>Lançamentos atrasados</td><td style="text-align:right;">${result.metrics.lancamentosAtrasados}</td></tr> <tr><td>Modo visual</td><td style="text-align:right;">${result.metrics.viewMode}</td></tr> </table> </div> `;
 }
 
 function ensureFinalReviewPanel() {
@@ -5784,21 +5009,7 @@ function ensureFinalReviewPanel() {
     section.className = 'section final-review-panel';
     section.id = 'finalAppReviewPanel';
 
-    section.innerHTML = `
-        <div class="section-title-with-help">
-            <h2>✅ Revisão Final do App</h2>
-            <button class="help-chip" onclick="showContextHelp('configuracoes')">Ajuda</button>
-        </div>
-        <p style="color: var(--text-muted); margin-bottom: 14px;">
-            Use esta revisão para conferir se o núcleo do app está funcionando antes de usar dados financeiros reais com mais intensidade.
-        </p>
-        <div class="btn-group">
-            <button onclick="renderFinalAppReview()">Rodar revisão final</button>
-            <button class="secondary" onclick="showDataHealthCheck()">Verificar dados</button>
-            <button class="secondary" onclick="createManualBackupFromUI()">Backup manual</button>
-        </div>
-        <div id="finalAppReviewResults" style="margin-top: 18px;"></div>
-    `;
+    section.innerHTML = ` <div class="section-title-with-help"> <h2>✅ Revisão Final do App</h2> <button class="help-chip" onclick="showContextHelp('configuracoes')">Ajuda</button> </div> <p style="color: var(--text-muted); margin-bottom: 14px;"> Use esta revisão para conferir se o núcleo do app está funcionando antes de usar dados financeiros reais com mais intensidade. </p> <div class="btn-group"> <button onclick="renderFinalAppReview()">Rodar revisão final</button> <button class="secondary" onclick="showDataHealthCheck()">Verificar dados</button> <button class="secondary" onclick="createManualBackupFromUI()">Backup manual</button> </div> <div id="finalAppReviewResults" style="margin-top: 18px;"></div> `;
 
     page.appendChild(section);
 }
@@ -5829,54 +5040,9 @@ function ensureDecisionSimulatorGuide() {
         guide.className = 'section decision-guide-panel';
         guide.id = 'decisionGuidePanel';
 
-        guide.innerHTML = `
-            <div class="decision-guide-header">
-                <div>
-                    <div class="clean-home-eyebrow">Simulador estratégico</div>
-                    <h2>Simulador de Decisão em 3 passos</h2>
-                    <p>
-                        Use esta área para responder uma pergunta prática:
+        guide.innerHTML = ` <div class="decision-guide-header"> <div> <div class="clean-home-eyebrow">Simulador estratégico</div> <h2>Simulador de Decisão em 3 passos</h2> <p> Use esta área para responder uma pergunta prática:
                         se eu perder uma renda fixa, receber um valor parcelado e continuar com minhas despesas,
-                        em que mês o saldo fica perigoso e quanta nova renda preciso gerar?
-                    </p>
-                </div>
-            </div>
-
-            <div class="decision-guide-steps">
-                <div class="decision-guide-step">
-                    <strong>1. Ponto de partida</strong>
-                    <span>Informe saldo inicial, mês inicial e saldo mínimo de segurança.</span>
-                </div>
-                <div class="decision-guide-step">
-                    <strong>2. O que muda</strong>
-                    <span>Informe renda que deixa de entrar, valor a receber parcelado e rendas que continuam.</span>
-                </div>
-                <div class="decision-guide-step">
-                    <strong>3. Resultado</strong>
-                    <span>Veja mês a mês se sobra, falta, quando há risco e qual renda seria necessária.</span>
-                </div>
-            </div>
-
-            <div class="decision-guide-actions">
-                <button class="secondary" onclick="prefillDecisionSimulatorFromApp()">⚙️ Preencher com dados atuais</button>
-                <button onclick="fillExitJobDecisionScenario()">🧭 Modelo: sair de um emprego</button>
-                <button class="secondary" onclick="toggleDecisionSimpleHelp()">Como preencher?</button>
-            </div>
-
-            <div id="decisionSimpleHelp" class="decision-simple-help">
-                <strong>Como pensar este simulador:</strong>
-                <ul>
-                    <li><strong>Valor total a receber:</strong> dinheiro que você receberá ao sair, comissão futura ou acerto.</li>
-                    <li><strong>Dividir em meses:</strong> por quantos meses esse dinheiro vai ajudar no orçamento.</li>
-                    <li><strong>Renda que deixarei de receber:</strong> salário fixo ou renda que vai parar de entrar.</li>
-                    <li><strong>Rendas que continuam:</strong> tudo que continuará entrando normalmente.</li>
-                    <li><strong>Nova renda esperada:</strong> renda que você acredita conseguir gerar.</li>
-                    <li><strong>Despesas essenciais:</strong> aluguel, água, luz, internet, escola, contas fixas.</li>
-                    <li><strong>Despesas variáveis:</strong> mercado, transporte, extras e gastos flexíveis.</li>
-                    <li><strong>Saldo mínimo:</strong> limite de segurança. Abaixo dele o app acende alerta.</li>
-                </ul>
-            </div>
-        `;
+                        em que mês o saldo fica perigoso e quanta nova renda preciso gerar? </p> </div> </div> <div class="decision-guide-steps"> <div class="decision-guide-step"> <strong>1. Ponto de partida</strong> <span>Informe saldo inicial, mês inicial e saldo mínimo de segurança.</span> </div> <div class="decision-guide-step"> <strong>2. O que muda</strong> <span>Informe renda que deixa de entrar, valor a receber parcelado e rendas que continuam.</span> </div> <div class="decision-guide-step"> <strong>3. Resultado</strong> <span>Veja mês a mês se sobra, falta, quando há risco e qual renda seria necessária.</span> </div> </div> <div class="decision-guide-actions"> <button class="secondary" onclick="prefillDecisionSimulatorFromApp()">⚙️ Preencher com dados atuais</button> <button onclick="fillExitJobDecisionScenario()">🧭 Modelo: sair de um emprego</button> <button class="secondary" onclick="toggleDecisionSimpleHelp()">Como preencher?</button> </div> <div id="decisionSimpleHelp" class="decision-simple-help"> <strong>Como pensar este simulador:</strong> <ul> <li><strong>Valor total a receber:</strong> dinheiro que você receberá ao sair, comissão futura ou acerto.</li> <li><strong>Dividir em meses:</strong> por quantos meses esse dinheiro vai ajudar no orçamento.</li> <li><strong>Renda que deixarei de receber:</strong> salário fixo ou renda que vai parar de entrar.</li> <li><strong>Rendas que continuam:</strong> tudo que continuará entrando normalmente.</li> <li><strong>Nova renda esperada:</strong> renda que você acredita conseguir gerar.</li> <li><strong>Despesas essenciais:</strong> aluguel, água, luz, internet, escola, contas fixas.</li> <li><strong>Despesas variáveis:</strong> mercado, transporte, extras e gastos flexíveis.</li> <li><strong>Saldo mínimo:</strong> limite de segurança. Abaixo dele o app acende alerta.</li> </ul> </div> `;
 
         const firstSection = simulatorPage.querySelector('.section');
         if (firstSection) {
@@ -5977,9 +5143,7 @@ function appendDecisionResultHelp() {
 
     const help = document.createElement('div');
     help.className = 'decision-result-help';
-    help.innerHTML = `
-        <strong>Como interpretar:</strong><br>
-        Se o saldo final fica acima do saldo mínimo, o cenário é mais seguro.
+    help.innerHTML = ` <strong>Como interpretar:</strong><br> Se o saldo final fica acima do saldo mínimo, o cenário é mais seguro.
         Se aparece um mês de risco, aquele é o primeiro mês em que sua reserva fica abaixo do limite.
         A renda mensal sugerida mostra quanto você precisaria gerar para equilibrar o pior mês.
     `;
@@ -6094,46 +5258,8 @@ function filterTrainingModules(modules) {
 }
 
 function renderTrainingStartPanel(progress, completed, total) {
-    return `
-        <div class="training-start-panel">
-            <h3>Comece por aqui</h3>
-            <p>
-                Este treinamento ensina o app pelo fluxo real de uso: primeiro saldo e lançamentos,
-                depois cartões, dashboard, simulador e backup.
-            </p>
-
-            <div class="training-path-grid">
-                <div class="training-path-step">
-                    <strong>1. Saldo</strong>
-                    <span>Atualize o saldo real da conta.</span>
-                </div>
-                <div class="training-path-step">
-                    <strong>2. Semana</strong>
-                    <span>Lance entradas e saídas previstas.</span>
-                </div>
-                <div class="training-path-step">
-                    <strong>3. Baixa</strong>
-                    <span>Confirme o que realmente aconteceu.</span>
-                </div>
-                <div class="training-path-step">
-                    <strong>4. Faturas</strong>
-                    <span>Controle cartão, parcelas e recorrentes.</span>
-                </div>
-                <div class="training-path-step">
-                    <strong>5. Decisão</strong>
-                    <span>Use Dashboard e Simulador.</span>
-                </div>
-            </div>
-
-            <div class="training-filter-row">
-                <button class="secondary ${getTrainingFilter() === 'todos' ? 'active' : ''}" onclick="setTrainingFilter('todos')">Todos</button>
-                <button class="secondary ${getTrainingFilter() === 'essencial' ? 'active' : ''}" onclick="setTrainingFilter('essencial')">Essencial</button>
-                <button class="secondary ${getTrainingFilter() === 'cartoes' ? 'active' : ''}" onclick="setTrainingFilter('cartoes')">Cartões</button>
-                <button class="secondary ${getTrainingFilter() === 'decisao' ? 'active' : ''}" onclick="setTrainingFilter('decisao')">Decisão</button>
-                <button class="secondary ${getTrainingFilter() === 'apoio' ? 'active' : ''}" onclick="setTrainingFilter('apoio')">Apoio</button>
-            </div>
-        </div>
-    `;
+    return ` <div class="training-start-panel"> <h3>Comece por aqui</h3> <p> Este treinamento ensina o app pelo fluxo real de uso: primeiro saldo e lançamentos,
+                depois cartões, dashboard, simulador e backup. </p> <div class="training-path-grid"> <div class="training-path-step"> <strong>1. Saldo</strong> <span>Atualize o saldo real da conta.</span> </div> <div class="training-path-step"> <strong>2. Semana</strong> <span>Lance entradas e saídas previstas.</span> </div> <div class="training-path-step"> <strong>3. Baixa</strong> <span>Confirme o que realmente aconteceu.</span> </div> <div class="training-path-step"> <strong>4. Faturas</strong> <span>Controle cartão, parcelas e recorrentes.</span> </div> <div class="training-path-step"> <strong>5. Decisão</strong> <span>Use Dashboard e Simulador.</span> </div> </div> <div class="training-filter-row"> <button class="secondary ${getTrainingFilter() === 'todos' ? 'active' : ''}" onclick="setTrainingFilter('todos')">Todos</button> <button class="secondary ${getTrainingFilter() === 'essencial' ? 'active' : ''}" onclick="setTrainingFilter('essencial')">Essencial</button> <button class="secondary ${getTrainingFilter() === 'cartoes' ? 'active' : ''}" onclick="setTrainingFilter('cartoes')">Cartões</button> <button class="secondary ${getTrainingFilter() === 'decisao' ? 'active' : ''}" onclick="setTrainingFilter('decisao')">Decisão</button> <button class="secondary ${getTrainingFilter() === 'apoio' ? 'active' : ''}" onclick="setTrainingFilter('apoio')">Apoio</button> </div> </div> `;
 }
 
 function renderTrainingModuleV3() {
@@ -6165,47 +5291,7 @@ function renderTrainingModuleV3() {
         const stepsHtml = module.steps.map(step => '<li>' + step + '</li>').join('');
         const checklistHtml = module.checklist.map(item => '<li>' + item + '</li>').join('');
 
-        return `
-            <div id="training-module-${module.id}" class="training-module-card ${checked ? 'completed' : ''} ${isOpen ? '' : 'collapsed'}">
-                <div class="training-module-header">
-                    <div>
-                        <div class="training-module-title">${module.title}</div>
-                        <div class="training-module-area">${module.area}</div>
-                        <div class="training-module-summary">${module.objective}</div>
-                    </div>
-
-                    <div class="training-module-header-actions">
-                        <span class="badge ${checked ? 'status-realizado' : 'status-planejado'}">${checked ? 'Aprendido' : 'Pendente'}</span>
-                        <button class="secondary training-module-toggle" onclick="toggleTrainingModuleOpen('${module.id}')">${isOpen ? 'Fechar' : 'Abrir'}</button>
-                    </div>
-                </div>
-
-                <div class="training-module-box training-extra">
-                    <strong>Explicação</strong>
-                    <p>${module.explanation}</p>
-                </div>
-
-                <div class="training-module-body">
-                    <div class="training-module-box">
-                        <strong>Passo a passo</strong>
-                        <ol>${stepsHtml}</ol>
-                    </div>
-                    <div class="training-module-box">
-                        <strong>Exemplo prático</strong>
-                        <p>${module.example}</p>
-                        <strong>Checklist</strong>
-                        <ul>${checklistHtml}</ul>
-                    </div>
-                </div>
-
-                <div class="training-module-actions">
-                    <label class="training-module-check">
-                        <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleTrainingStep('${module.id}')">
-                        Marcar este módulo como aprendido
-                    </label>
-                </div>
-            </div>
-        `;
+        return ` <div id="training-module-${module.id}" class="training-module-card ${checked ? 'completed' : ''} ${isOpen ? '' : 'collapsed'}"> <div class="training-module-header"> <div> <div class="training-module-title">${module.title}</div> <div class="training-module-area">${module.area}</div> <div class="training-module-summary">${module.objective}</div> </div> <div class="training-module-header-actions"> <span class="badge ${checked ? 'status-realizado' : 'status-planejado'}">${checked ? 'Aprendido' : 'Pendente'}</span> <button class="secondary training-module-toggle" onclick="toggleTrainingModuleOpen('${module.id}')">${isOpen ? 'Fechar' : 'Abrir'}</button> </div> </div> <div class="training-module-box training-extra"> <strong>Explicação</strong> <p>${module.explanation}</p> </div> <div class="training-module-body"> <div class="training-module-box"> <strong>Passo a passo</strong> <ol>${stepsHtml}</ol> </div> <div class="training-module-box"> <strong>Exemplo prático</strong> <p>${module.example}</p> <strong>Checklist</strong> <ul>${checklistHtml}</ul> </div> </div> <div class="training-module-actions"> <label class="training-module-check"> <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleTrainingStep('${module.id}')"> Marcar este módulo como aprendido </label> </div> </div> `;
     }).join('');
 
     container.innerHTML = startPanel + modulesHtml;
@@ -6492,30 +5578,9 @@ function ensureSafeBackupPanel() {
     panel.className = 'section safe-backup-panel';
     panel.id = 'safeBackupPanel';
 
-    panel.innerHTML = `
-        <div class="section-title-with-help">
-            <h2>🛡️ Backup seguro em arquivo</h2>
-            <button class="help-chip" onclick="showContextHelp('configuracoes')">Ajuda</button>
-        </div>
-
-        <p style="color: var(--text-muted); margin-bottom: 10px;">
-            Baixe uma cópia completa dos dados em arquivo JSON. Esse backup fica fora do navegador
-            e protege contra perda de dados caso o cache ou armazenamento do site seja apagado.
-        </p>
-
-        <div class="safe-backup-actions">
-            <button onclick="downloadFinanceBackupFile()">💾 Baixar Backup Agora</button>
-            <button class="secondary" onclick="copyFinanceBackupToClipboard()">📋 Copiar backup</button>
-            <button class="secondary" onclick="showPage('treinamento')">🎓 Como usar backup</button>
-        </div>
-
-        <div class="safe-backup-status" id="safeBackupStatus"></div>
-
-        <div class="safe-backup-warning">
-            Recomenda-se baixar um backup pelo menos uma vez por semana ou antes de limpar dados do navegador.
-            Guarde o arquivo em uma pasta segura, Google Drive, OneDrive ou pendrive.
-        </div>
-    `;
+    panel.innerHTML = ` <div class="section-title-with-help"> <h2>🛡️ Backup seguro em arquivo</h2> <button class="help-chip" onclick="showContextHelp('configuracoes')">Ajuda</button> </div> <p style="color: var(--text-muted); margin-bottom: 10px;"> Baixe uma cópia completa dos dados em arquivo JSON. Esse backup fica fora do navegador
+            e protege contra perda de dados caso o cache ou armazenamento do site seja apagado. </p> <div class="safe-backup-actions"> <button onclick="downloadFinanceBackupFile()">💾 Baixar Backup Agora</button> <button class="secondary" onclick="copyFinanceBackupToClipboard()">📋 Copiar backup</button> <button class="secondary" onclick="showPage('treinamento')">🎓 Como usar backup</button> </div> <div class="safe-backup-status" id="safeBackupStatus"></div> <div class="safe-backup-warning"> Recomenda-se baixar um backup pelo menos uma vez por semana ou antes de limpar dados do navegador.
+            Guarde o arquivo em uma pasta segura, Google Drive, OneDrive ou pendrive. </div> `;
 
     const finalReview = document.getElementById('finalAppReviewPanel');
 
