@@ -5486,6 +5486,205 @@ window.addEventListener('load', function() {
     ensureDecisionSimulatorGuide();
 });
 
+
+
+/* PATCH 26C — TREINAMENTO GUIADO */
+const TRAINING_FILTER_STORAGE_KEY = 'financeTrainingFilterV1';
+const TRAINING_OPEN_MODULE_STORAGE_KEY = 'financeTrainingOpenModuleV1';
+
+function getTrainingFilter() {
+    return localStorage.getItem(TRAINING_FILTER_STORAGE_KEY) || 'todos';
+}
+
+function setTrainingFilter(filter) {
+    localStorage.setItem(TRAINING_FILTER_STORAGE_KEY, filter || 'todos');
+    renderTrainingModule();
+}
+
+function getOpenTrainingModules() {
+    try {
+        const saved = localStorage.getItem(TRAINING_OPEN_MODULE_STORAGE_KEY);
+        if (!saved) return {};
+        const parsed = JSON.parse(saved);
+        return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (error) {
+        return {};
+    }
+}
+
+function saveOpenTrainingModules(openModules) {
+    localStorage.setItem(TRAINING_OPEN_MODULE_STORAGE_KEY, JSON.stringify(openModules || {}));
+}
+
+function toggleTrainingModuleOpen(moduleId) {
+    const openModules = getOpenTrainingModules();
+    openModules[moduleId] = !openModules[moduleId];
+    saveOpenTrainingModules(openModules);
+    renderTrainingModule();
+}
+
+function openTrainingModule(moduleId) {
+    const openModules = getOpenTrainingModules();
+    openModules[moduleId] = true;
+    saveOpenTrainingModules(openModules);
+    renderTrainingModule();
+
+    setTimeout(() => {
+        const el = document.getElementById('training-module-' + moduleId);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 60);
+}
+
+function getTrainingModuleGroup(module) {
+    const id = module.id;
+
+    if (['visao-geral', 'saldo-real', 'entradas-saidas', 'baixa-manual'].includes(id)) {
+        return 'essencial';
+    }
+
+    if (['cartoes-faturas', 'parcelas-recorrentes'].includes(id)) {
+        return 'cartoes';
+    }
+
+    if (['simulador-decisao', 'dashboard'].includes(id)) {
+        return 'decisao';
+    }
+
+    if (['backup-seguranca', 'mercado'].includes(id)) {
+        return 'apoio';
+    }
+
+    return 'todos';
+}
+
+function filterTrainingModules(modules) {
+    const filter = getTrainingFilter();
+
+    if (filter === 'todos') return modules;
+
+    return modules.filter(module => getTrainingModuleGroup(module) === filter);
+}
+
+function renderTrainingStartPanel(progress, completed, total) {
+    return `
+        <div class="training-start-panel">
+            <h3>Comece por aqui</h3>
+            <p>
+                Este treinamento ensina o app pelo fluxo real de uso: primeiro saldo e lançamentos,
+                depois cartões, dashboard, simulador e backup.
+            </p>
+
+            <div class="training-path-grid">
+                <div class="training-path-step">
+                    <strong>1. Saldo</strong>
+                    <span>Atualize o saldo real da conta.</span>
+                </div>
+                <div class="training-path-step">
+                    <strong>2. Semana</strong>
+                    <span>Lance entradas e saídas previstas.</span>
+                </div>
+                <div class="training-path-step">
+                    <strong>3. Baixa</strong>
+                    <span>Confirme o que realmente aconteceu.</span>
+                </div>
+                <div class="training-path-step">
+                    <strong>4. Faturas</strong>
+                    <span>Controle cartão, parcelas e recorrentes.</span>
+                </div>
+                <div class="training-path-step">
+                    <strong>5. Decisão</strong>
+                    <span>Use Dashboard e Simulador.</span>
+                </div>
+            </div>
+
+            <div class="training-filter-row">
+                <button class="secondary ${getTrainingFilter() === 'todos' ? 'active' : ''}" onclick="setTrainingFilter('todos')">Todos</button>
+                <button class="secondary ${getTrainingFilter() === 'essencial' ? 'active' : ''}" onclick="setTrainingFilter('essencial')">Essencial</button>
+                <button class="secondary ${getTrainingFilter() === 'cartoes' ? 'active' : ''}" onclick="setTrainingFilter('cartoes')">Cartões</button>
+                <button class="secondary ${getTrainingFilter() === 'decisao' ? 'active' : ''}" onclick="setTrainingFilter('decisao')">Decisão</button>
+                <button class="secondary ${getTrainingFilter() === 'apoio' ? 'active' : ''}" onclick="setTrainingFilter('apoio')">Apoio</button>
+            </div>
+        </div>
+    `;
+}
+
+function renderTrainingModuleV3() {
+    const container = document.getElementById('trainingStepsList');
+    if (!container) return;
+
+    const progress = getTrainingProgress();
+    const openModules = getOpenTrainingModules();
+
+    const allModules = Array.isArray(TRAINING_MODULES_V2) ? TRAINING_MODULES_V2 : [];
+    const modules = filterTrainingModules(allModules);
+
+    const completed = allModules.filter(module => progress[module.id]).length;
+    const total = allModules.length;
+    const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    const progressValue = document.getElementById('trainingProgressValue');
+    if (progressValue) progressValue.textContent = percent + '%';
+
+    const progressText = document.getElementById('trainingProgressText');
+    if (progressText) progressText.textContent = completed + ' de ' + total + ' módulos concluídos';
+
+    const startPanel = renderTrainingStartPanel(progress, completed, total);
+
+    const modulesHtml = modules.map(module => {
+        const checked = Boolean(progress[module.id]);
+        const isOpen = Boolean(openModules[module.id]);
+
+        const stepsHtml = module.steps.map(step => '<li>' + step + '</li>').join('');
+        const checklistHtml = module.checklist.map(item => '<li>' + item + '</li>').join('');
+
+        return `
+            <div id="training-module-${module.id}" class="training-module-card ${checked ? 'completed' : ''} ${isOpen ? '' : 'collapsed'}">
+                <div class="training-module-header">
+                    <div>
+                        <div class="training-module-title">${module.title}</div>
+                        <div class="training-module-area">${module.area}</div>
+                        <div class="training-module-summary">${module.objective}</div>
+                    </div>
+
+                    <div class="training-module-header-actions">
+                        <span class="badge ${checked ? 'status-realizado' : 'status-planejado'}">${checked ? 'Aprendido' : 'Pendente'}</span>
+                        <button class="secondary training-module-toggle" onclick="toggleTrainingModuleOpen('${module.id}')">${isOpen ? 'Fechar' : 'Abrir'}</button>
+                    </div>
+                </div>
+
+                <div class="training-module-box training-extra">
+                    <strong>Explicação</strong>
+                    <p>${module.explanation}</p>
+                </div>
+
+                <div class="training-module-body">
+                    <div class="training-module-box">
+                        <strong>Passo a passo</strong>
+                        <ol>${stepsHtml}</ol>
+                    </div>
+                    <div class="training-module-box">
+                        <strong>Exemplo prático</strong>
+                        <p>${module.example}</p>
+                        <strong>Checklist</strong>
+                        <ul>${checklistHtml}</ul>
+                    </div>
+                </div>
+
+                <div class="training-module-actions">
+                    <label class="training-module-check">
+                        <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleTrainingStep('${module.id}')">
+                        Marcar este módulo como aprendido
+                    </label>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    container.innerHTML = startPanel + modulesHtml;
+}
+
+renderTrainingModule = renderTrainingModuleV3;
+
 window.onload = init;
 
 

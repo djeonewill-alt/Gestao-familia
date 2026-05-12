@@ -2011,3 +2011,101 @@ body[data-current-page="configuracoes"] #configuracoes.page.active {
         width: 100%;
     }
 }
+
+
+/* PATCH 26C — TREINAMENTO GUIADO */
+.training-start-panel {
+    margin-bottom: 18px;
+    padding: 18px;
+    border: 1px solid rgba(96, 165, 250, 0.22);
+    border-radius: var(--radius-lg);
+    background:
+        linear-gradient(135deg, rgba(15, 23, 42, 0.72), rgba(15, 28, 48, 0.56)),
+        radial-gradient(circle at top right, rgba(96, 165, 250, 0.12), transparent 32%);
+}
+
+.training-start-panel h3 {
+    color: var(--text-main);
+    margin-bottom: 8px;
+    letter-spacing: -0.02em;
+}
+
+.training-start-panel p {
+    color: var(--text-muted);
+    margin-bottom: 14px;
+}
+
+.training-path-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+}
+
+.training-path-step {
+    padding: 12px;
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    background: rgba(2, 6, 23, 0.24);
+}
+
+.training-path-step strong {
+    color: var(--text-main);
+    display: block;
+    margin-bottom: 5px;
+}
+
+.training-path-step span {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.training-module-card.collapsed .training-module-body,
+.training-module-card.collapsed .training-module-actions,
+.training-module-card.collapsed .training-module-box.training-extra {
+    display: none;
+}
+
+.training-module-summary {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin-top: 8px;
+}
+
+.training-module-header-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.training-module-toggle {
+    padding: 7px 11px;
+    font-size: 12px;
+}
+
+.training-filter-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 14px 0 18px;
+}
+
+.training-filter-row button {
+    padding: 8px 12px;
+    font-size: 12px;
+}
+
+.training-filter-row button.active {
+    background: linear-gradient(135deg, var(--primary), var(--primary-strong));
+}
+
+@media (max-width: 900px) {
+    .training-path-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .training-module-header-actions {
+        justify-content: flex-start;
+    }
+}
