@@ -2502,6 +2502,8 @@ function getFirstInvoiceMonthForPurchase(card, purchaseDate) {
 
         function getCardInvoicePurchases(cardId, mesRef) {
             const compras = [];
+            const card = findCardById(cardId);
+            const cardName = card ? card.nome : 'Cartao';
 
             data.transacoes.forEach(t => {
                 if (t.tipo === 'cartao' && String(t.cartaoId) === String(cardId)) {
@@ -2515,7 +2517,12 @@ function getFirstInvoiceMonthForPurchase(card, purchaseDate) {
                                 categoria: t.categoria,
                                 dataCompra: t.data,
                                 origem: 'legacy',
-                                origemLabel: 'Compra antiga'
+                                origemLabel: 'Compra antiga',
+                                sourceType: 'legacyCardTransaction',
+                                itemId: t.id,
+                                cardId: t.cartaoId,
+                                cardName,
+                                monthRef: mesRef
                             });
                         }
                     });
@@ -2534,17 +2541,31 @@ function getFirstInvoiceMonthForPurchase(card, purchaseDate) {
                             categoria: item.category,
                             dataCompra: item.purchaseDate,
                             origem: 'cardItems',
-                            origemLabel: 'Item de fatura'
+                            origemLabel: 'Item de fatura',
+                            sourceType: 'cardItem',
+                            itemId: item.id,
+                            cardItemId: item.id,
+                            cardId: item.cardId,
+                            cardName,
+                            monthRef: mesRef,
+                            installmentNumber: parcela.installmentNumber,
+                            totalInstallments: parcela.totalInstallments
                         });
                     }
                 });
             });
 
-            compras.push(...getCardRecurringPurchases(cardId, mesRef));
+            compras.push(...getCardRecurringPurchases(cardId, mesRef).map(item => ({
+                ...item,
+                sourceType: 'cardRecurringItem',
+                itemId: item.recurringItemId,
+                cardId,
+                cardName,
+                monthRef: mesRef
+            })));
 
             return compras;
         }
-
         function calcularTotalFaturaPorResponsavel(cardId, mesRef, responsavel) {
             return getCardInvoicePurchases(cardId, mesRef)
                 .filter(compra => compra.responsavel === responsavel)
@@ -2830,6 +2851,517 @@ function gerarLancamentoPagamentoFatura(cartaoId, mesRef) {
     return transaction;
 }
 
+
+// ========== GESTAO DE FATURAS ==========
+let currentInvoiceEditContext = null;
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function getInvoiceMonthLabel(monthRef) {
+    const normalized = normalizeMonthRef(monthRef);
+    if (!normalized) return '-';
+    const [year, month] = normalized.split('-').map(Number);
+    const names = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    return `${names[month - 1]} ${year}`;
+}
+
+function getSelectedInvoiceMonthRef() {
+    const current = normalizeMonthRef(document.getElementById('mesReferencia')?.value);
+    return current || new Date().toISOString().slice(0, 7);
+}
+
+function getInvoiceMonthOverviewRange(monthsAhead = 12) {
+    const start = new Date().toISOString().slice(0, 7);
+    const months = [];
+    for (let i = 0; i < monthsAhead; i++) {
+        months.push(addMonthsToMonthRef(start, i));
+    }
+    return months.filter(Boolean);
+}
+
+function getSelectedInvoiceItems(monthRef = getSelectedInvoiceMonthRef()) {
+    if (!Array.isArray(data.cartoes)) return [];
+    return data.cartoes.flatMap(card => getCardInvoicePurchases(card.id, monthRef));
+}
+
+function calculateInvoiceTotalForMonth(monthRef) {
+    return getSelectedInvoiceItems(monthRef).reduce((total, item) => total + (Number(item.valor) || 0), 0);
+}
+
+function getInvoiceMonthStatusSummary(monthRef) {
+    const invoices = Array.isArray(data.cardInvoices)
+        ? data.cardInvoices.filter(invoice => invoice.monthRef === monthRef)
+        : [];
+    if (!invoices.length) return 'aberta';
+    if (invoices.every(invoice => invoice.status === 'paga')) return 'paga';
+    if (invoices.some(invoice => invoice.status === 'fechada')) return 'fechada';
+    return 'aberta';
+}
+
+function getInvoiceMonthDueLabel(monthRef) {
+    const card = Array.isArray(data.cartoes) ? data.cartoes[0] : null;
+    if (!card || !monthRef) return '';
+    return formatDate(getInvoicePaymentDueDate(card, monthRef));
+}
+
+function ensureCardInvoiceManagementPanels() {
+    const page = document.getElementById('cartoes');
+    if (!page) return;
+
+    let overview = document.getElementById('cardInvoicesMonthOverview');
+    if (!overview) {
+        overview = document.createElement('div');
+        overview.id = 'cardInvoicesMonthOverview';
+        overview.className = 'section invoice-month-overview';
+    }
+
+    let detail = document.getElementById('selectedInvoiceDetail');
+    if (!detail) {
+        detail = document.createElement('div');
+        detail.id = 'selectedInvoiceDetail';
+        detail.className = 'section selected-invoice-detail';
+    }
+
+    const firstSection = page.querySelector('.section');
+    if (firstSection && overview.parentNode !== page) page.insertBefore(overview, firstSection);
+    if (detail.parentNode !== page) page.insertBefore(detail, overview.nextSibling);
+
+    const addItemSection = document.getElementById('cardItemPreview')?.closest('.section');
+    const cardManageSection = document.getElementById('listaCartoes')?.closest('.section');
+    const legacyInvoiceSection = document.getElementById('faturasMes')?.closest('.section');
+
+    if (addItemSection && addItemSection.parentNode === page) {
+        page.insertBefore(addItemSection, detail.nextSibling);
+        addItemSection.classList.add('card-add-item-panel');
+    }
+
+    if (cardManageSection && cardManageSection.parentNode === page) {
+        page.insertBefore(cardManageSection, addItemSection ? addItemSection.nextSibling : detail.nextSibling);
+        cardManageSection.classList.add('card-management-panel');
+    }
+
+    if (legacyInvoiceSection && legacyInvoiceSection.parentNode === page) {
+        page.appendChild(legacyInvoiceSection);
+        legacyInvoiceSection.classList.add('legacy-invoice-panel');
+    }
+
+    ensureInvoiceEditModal();
+}
+
+function renderCardInvoicesMonthOverview() {
+    ensureCardInvoiceManagementPanels();
+    const container = document.getElementById('cardInvoicesMonthOverview');
+    if (!container) return;
+
+    const months = getInvoiceMonthOverviewRange(12);
+    const selected = getSelectedInvoiceMonthRef();
+    const rows = months.map(monthRef => ({
+        monthRef,
+        total: calculateInvoiceTotalForMonth(monthRef),
+        status: getInvoiceMonthStatusSummary(monthRef),
+        due: getInvoiceMonthDueLabel(monthRef)
+    }));
+    const max = Math.max(1, ...rows.map(row => row.total));
+
+    container.innerHTML = `
+        <div class="invoice-panel-heading">
+            <div>
+                <h2>Faturas por mes</h2>
+                <p>Clique em um mes para abrir o detalhe da fatura.</p>
+            </div>
+        </div>
+        <div class="invoice-month-bars">
+            ${rows.map(row => {
+                const percent = Math.max(4, Math.round((row.total / max) * 100));
+                const active = row.monthRef === selected ? ' active' : '';
+                return `
+                    <button class="invoice-month-card${active}" onclick="selectInvoiceMonth('${row.monthRef}')">
+                        <div class="invoice-month-card-top">
+                            <strong>${getInvoiceMonthLabel(row.monthRef)}</strong>
+                            <span>${getInvoiceStatusBadgeHtml(row.status)}</span>
+                        </div>
+                        <div class="invoice-month-total">${formatCurrency(row.total)}</div>
+                        <div class="invoice-month-due">${row.due ? 'Venc. ' + row.due : ''}</div>
+                        <div class="invoice-month-bar"><span class="invoice-month-bar-fill" style="width:${percent}%"></span></div>
+                    </button>
+                `;
+            }).join('')}
+        </div>
+    `;
+}
+
+function selectInvoiceMonth(monthRef) {
+    const normalized = normalizeMonthRef(monthRef);
+    if (!normalized) return;
+    const monthInput = document.getElementById('mesReferencia');
+    if (monthInput) monthInput.value = normalized;
+    updateFaturas();
+    renderCardInvoicesMonthOverview();
+    renderSelectedInvoiceDetail();
+    document.getElementById('selectedInvoiceDetail')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function getInvoiceDetailSummary(monthRef) {
+    const items = getSelectedInvoiceItems(monthRef);
+    const byResponsible = {};
+    const byCard = {};
+
+    items.forEach(item => {
+        const value = Number(item.valor) || 0;
+        byResponsible[item.responsavel || 'Sem responsavel'] = (byResponsible[item.responsavel || 'Sem responsavel'] || 0) + value;
+        byCard[item.cardName || 'Cartao'] = (byCard[item.cardName || 'Cartao'] || 0) + value;
+    });
+
+    return {
+        items,
+        total: items.reduce((sum, item) => sum + (Number(item.valor) || 0), 0),
+        byResponsible,
+        byCard
+    };
+}
+
+function renderSelectedInvoiceDetail() {
+    ensureCardInvoiceManagementPanels();
+    const container = document.getElementById('selectedInvoiceDetail');
+    if (!container) return;
+
+    const monthRef = getSelectedInvoiceMonthRef();
+    const summary = getInvoiceDetailSummary(monthRef);
+    const cards = Array.isArray(data.cartoes) ? data.cartoes : [];
+    const firstCard = cards[0];
+    const cycle = firstCard ? getInvoiceCycleRangeForPaymentMonth(firstCard, monthRef) : null;
+
+    container.innerHTML = `
+        <div class="selected-invoice-header">
+            <div>
+                <h2>Detalhe da fatura selecionada</h2>
+                <p>${getInvoiceMonthLabel(monthRef)}${cycle ? ' - ' + cycle.label : ''}</p>
+            </div>
+            <div class="selected-invoice-total">
+                <span>Total geral</span>
+                <strong>${formatCurrency(summary.total)}</strong>
+            </div>
+        </div>
+
+        <div class="selected-invoice-summary">
+            <div><span>Mes</span><strong>${monthRef}</strong></div>
+            <div><span>Status geral</span><strong>${getInvoiceMonthStatusSummary(monthRef)}</strong></div>
+            <div><span>Itens</span><strong>${summary.items.length}</strong></div>
+        </div>
+
+        <div class="selected-invoice-breakdowns">
+            <div>
+                <strong>Por responsavel</strong>
+                ${Object.entries(summary.byResponsible).map(([name, value]) => `<div><span>${escapeHtml(name)}</span><b>${formatCurrency(value)}</b></div>`).join('') || '<p class="invoice-muted">Sem itens neste mes.</p>'}
+            </div>
+            <div>
+                <strong>Por cartao</strong>
+                ${Object.entries(summary.byCard).map(([name, value]) => `<div><span>${escapeHtml(name)}</span><b>${formatCurrency(value)}</b></div>`).join('') || '<p class="invoice-muted">Sem itens neste mes.</p>'}
+            </div>
+        </div>
+
+        <div class="selected-invoice-actions">
+            ${cards.map(card => renderInvoiceCardActions(card, monthRef)).join('')}
+        </div>
+
+        <div class="selected-invoice-items">
+            ${summary.items.map(item => renderSelectedInvoiceItemRow(item)).join('') || '<div class="empty-state">Nenhum item nesta fatura.</div>'}
+        </div>
+    `;
+}
+
+function renderInvoiceCardActions(card, monthRef) {
+    const invoice = getOrCreateCardInvoice(card.id, monthRef);
+    const status = invoice?.status || 'aberta';
+    const amount = getInvoicePaymentAmount(card.id, monthRef);
+    const payment = findInvoicePaymentTransaction(invoice);
+    const paymentInfo = payment
+        ? `<div class="invoice-payment-info">Pagamento vinculado: ${formatCurrency(getTransactionPlannedValue(payment))} - ${getDerivedStatus(payment)}</div>`
+        : '<div class="invoice-payment-info">Sem pagamento vinculado.</div>';
+
+    return `
+        <div class="invoice-card-actions">
+            <div>
+                <strong>${escapeHtml(card.nome)}</strong>
+                <span>${getInvoiceStatusBadgeHtml(status)} ${formatCurrency(amount)}</span>
+                ${paymentInfo}
+            </div>
+            <div class="invoice-card-action-buttons">
+                <button class="secondary" onclick="setInvoiceStatusFromDetail('${String(card.id)}', '${monthRef}', 'aberta')">Marcar aberta</button>
+                <button class="secondary" onclick="setInvoiceStatusFromDetail('${String(card.id)}', '${monthRef}', 'fechada')">Marcar fechada</button>
+                <button class="success" onclick="setInvoiceStatusFromDetail('${String(card.id)}', '${monthRef}', 'paga')">Marcar paga</button>
+                <button onclick="generateInvoicePaymentFromDetail('${String(card.id)}', '${monthRef}')">Gerar pagamento</button>
+            </div>
+        </div>
+    `;
+}
+
+function renderSelectedInvoiceItemRow(item) {
+    const canEdit = item.sourceType === 'cardItem' || item.sourceType === 'cardRecurringItem';
+    const editAction = canEdit
+        ? `<button class="secondary" onclick="openEditInvoiceItemModal('${item.sourceType}', '${String(item.itemId)}', '${item.monthRef}')">Editar</button>`
+        : `<button class="secondary" onclick="openEditInvoiceItemModal('${item.sourceType}', '${String(item.itemId)}', '${item.monthRef}')">Ver aviso</button>`;
+    const cancelAction = canEdit
+        ? `<button class="danger" onclick="cancelInvoiceItem('${item.sourceType}', '${String(item.itemId)}', '${item.monthRef}')">Cancelar</button>`
+        : `<button class="danger" onclick="cancelInvoiceItem('${item.sourceType}', '${String(item.itemId)}', '${item.monthRef}')">Cancelar</button>`;
+
+    return `
+        <div class="selected-invoice-item">
+            <div>
+                <strong>${escapeHtml(item.descricao || 'Item')}</strong>
+                <div class="invoice-muted">${escapeHtml(item.cardName || 'Cartao')} - ${escapeHtml(item.parcela || '-')} - ${escapeHtml(item.categoria || 'Sem categoria')} - ${escapeHtml(item.responsavel || 'Sem responsavel')} - ${escapeHtml(item.origemLabel || item.origem || 'Item')}</div>
+            </div>
+            <div class="selected-invoice-item-side">
+                <strong>${formatCurrency(Number(item.valor) || 0)}</strong>
+                <div class="invoice-item-actions">${editAction}${cancelAction}</div>
+            </div>
+        </div>
+    `;
+}
+
+function setInvoiceStatusFromDetail(cardId, monthRef, status) {
+    updateCardInvoiceStatus(cardId, monthRef, status);
+    renderCardInvoicesMonthOverview();
+    renderSelectedInvoiceDetail();
+}
+
+function generateInvoicePaymentFromDetail(cardId, monthRef) {
+    gerarLancamentoPagamentoFatura(cardId, monthRef);
+    renderCardInvoicesMonthOverview();
+    renderSelectedInvoiceDetail();
+}
+
+function ensureInvoiceEditModal() {
+    if (document.getElementById('invoiceEditModal')) return;
+    const modal = document.createElement('div');
+    modal.id = 'invoiceEditModal';
+    modal.className = 'invoice-edit-modal';
+    modal.style.display = 'none';
+    modal.innerHTML = '<div class="invoice-edit-card"><div id="invoiceEditContent"></div></div>';
+    document.body.appendChild(modal);
+}
+
+function findEditableInvoiceItem(sourceType, itemId) {
+    if (sourceType === 'cardItem') {
+        return (data.cardItems || []).find(item => String(item.id) === String(itemId));
+    }
+    if (sourceType === 'cardRecurringItem') {
+        return (data.cardRecurringItems || []).find(item => String(item.id) === String(itemId));
+    }
+    return null;
+}
+
+function confirmIfInvoiceIsPaid(monthRef) {
+    const paid = (data.cardInvoices || []).some(invoice => invoice.monthRef === monthRef && invoice.status === 'paga');
+    if (!paid) return true;
+    return confirm('Esta fatura esta marcada como paga. Deseja mesmo alterar este item?');
+}
+
+function openEditInvoiceItemModal(sourceType, itemId, monthRef) {
+    ensureInvoiceEditModal();
+    currentInvoiceEditContext = { sourceType, itemId, monthRef };
+
+    if (sourceType === 'legacyCardTransaction') {
+        alert('Compra antiga: edicao completa ainda nao disponivel neste painel.');
+        return;
+    }
+
+    if (!confirmIfInvoiceIsPaid(monthRef)) return;
+
+    const item = findEditableInvoiceItem(sourceType, itemId);
+    if (!item) return alert('Item nao encontrado.');
+
+    const modal = document.getElementById('invoiceEditModal');
+    const content = document.getElementById('invoiceEditContent');
+    const cardOptions = (data.cartoes || []).map(card => `<option value="${String(card.id)}" ${String(card.id) === String(item.cardId) ? 'selected' : ''}>${escapeHtml(card.nome)}</option>`).join('');
+    const categoryOptions = (data.categorias || []).map(category => `<option value="${escapeHtml(category)}" ${(item.category || item.categoria) === category ? 'selected' : ''}>${escapeHtml(category)}</option>`).join('');
+    const responsibleOptions = (data.responsaveis || []).map(resp => `<option value="${escapeHtml(resp)}" ${(item.responsible || item.responsavel) === resp ? 'selected' : ''}>${escapeHtml(resp)}</option>`).join('');
+
+    if (sourceType === 'cardRecurringItem') {
+        content.innerHTML = `
+            <h3>Editar recorrente da fatura</h3>
+            <div class="form-group"><label>Descricao</label><input id="invoiceEditDescription" value="${escapeHtml(item.description || '')}"></div>
+            <div class="form-group"><label>Valor mensal</label><input id="invoiceEditAmount" type="number" step="0.01" value="${Number(item.amount) || 0}"></div>
+            <div class="form-group"><label>Cartao</label><select id="invoiceEditCardId">${cardOptions}</select></div>
+            <div class="form-group"><label>Primeira fatura</label><input id="invoiceEditMonth" type="month" value="${item.startInvoiceMonth || monthRef}"></div>
+            <div class="form-group"><label>Categoria</label><select id="invoiceEditCategory">${categoryOptions}</select></div>
+            <div class="form-group"><label>Responsavel</label><select id="invoiceEditResponsible">${responsibleOptions}</select></div>
+            <div class="form-group"><label>Status</label><select id="invoiceEditStatus"><option value="active" ${item.status === 'active' ? 'selected' : ''}>Ativa</option><option value="cancelled" ${item.status === 'cancelled' ? 'selected' : ''}>Cancelada</option></select></div>
+            <div class="invoice-edit-actions"><button onclick="saveEditedInvoiceItem()">Salvar</button><button class="secondary" onclick="closeEditInvoiceItemModal()">Cancelar</button></div>
+        `;
+    } else {
+        const isExisting = item.type === 'existing_installment';
+        const amount = item.type === 'installment' || item.type === 'existing_installment'
+            ? Number(item.installmentAmount) || 0
+            : Number(item.totalAmount) || 0;
+        content.innerHTML = `
+            <h3>Editar item da fatura</h3>
+            <div class="form-group"><label>Descricao</label><input id="invoiceEditDescription" value="${escapeHtml(item.description || '')}"></div>
+            <div class="form-group"><label>${item.type === 'single' ? 'Valor' : 'Valor da parcela'}</label><input id="invoiceEditAmount" type="number" step="0.01" value="${amount}"></div>
+            <div class="form-group"><label>Cartao</label><select id="invoiceEditCardId">${cardOptions}</select></div>
+            ${item.type === 'single' || item.type === 'installment' ? `<div class="form-group"><label>Data da compra</label><input id="invoiceEditPurchaseDate" type="date" value="${item.purchaseDate || ''}"></div>` : ''}
+            ${item.type === 'installment' || isExisting ? `<div class="form-group"><label>Total de parcelas</label><input id="invoiceEditTotalInstallments" type="number" min="1" value="${item.totalInstallments || 1}"></div>` : ''}
+            ${isExisting ? `<div class="form-group"><label>Parcela atual</label><input id="invoiceEditFirstInstallmentNumber" type="number" min="1" value="${item.firstInstallmentNumber || 1}"></div><div class="form-group"><label>Mes da parcela atual</label><input id="invoiceEditMonth" type="month" value="${item.firstInvoiceMonth || monthRef}"></div>` : ''}
+            <div class="form-group"><label>Categoria</label><select id="invoiceEditCategory">${categoryOptions}</select></div>
+            <div class="form-group"><label>Responsavel</label><select id="invoiceEditResponsible">${responsibleOptions}</select></div>
+            <div class="invoice-edit-actions"><button onclick="saveEditedInvoiceItem()">Salvar</button><button class="secondary" onclick="closeEditInvoiceItemModal()">Cancelar</button></div>
+        `;
+    }
+
+    modal.style.display = 'flex';
+}
+
+function closeEditInvoiceItemModal() {
+    const modal = document.getElementById('invoiceEditModal');
+    if (modal) modal.style.display = 'none';
+    currentInvoiceEditContext = null;
+}
+
+function saveEditedInvoiceItem() {
+    if (!currentInvoiceEditContext) return;
+    const { sourceType, itemId, monthRef } = currentInvoiceEditContext;
+    const item = findEditableInvoiceItem(sourceType, itemId);
+    if (!item) return alert('Item nao encontrado.');
+
+    const description = document.getElementById('invoiceEditDescription')?.value.trim();
+    const amount = parseCurrencyInput(document.getElementById('invoiceEditAmount')?.value);
+    const cardId = document.getElementById('invoiceEditCardId')?.value;
+    const category = document.getElementById('invoiceEditCategory')?.value;
+    const responsible = document.getElementById('invoiceEditResponsible')?.value;
+
+    if (!description) return alert('Informe a descricao.');
+    if (!Number.isFinite(amount) || amount <= 0) return alert('Informe um valor maior que zero.');
+    if (!cardId || !findCardById(cardId)) return alert('Selecione um cartao valido.');
+    if (!category) return alert('Informe a categoria.');
+    if (!responsible) return alert('Informe o responsavel.');
+
+    const now = new Date().toISOString();
+
+    if (sourceType === 'cardRecurringItem') {
+        const startInvoiceMonth = normalizeMonthRef(document.getElementById('invoiceEditMonth')?.value);
+        if (!startInvoiceMonth) return alert('Informe a primeira fatura da recorrencia.');
+        item.description = description;
+        item.amount = amount;
+        item.cardId = cardId;
+        item.cardName = findCardById(cardId)?.nome || item.cardName;
+        item.category = category;
+        item.responsible = responsible;
+        item.startInvoiceMonth = startInvoiceMonth;
+        item.status = document.getElementById('invoiceEditStatus')?.value || item.status || 'active';
+        item.updatedAt = now;
+    } else {
+        item.description = description;
+        item.cardId = cardId;
+        item.cardName = findCardById(cardId)?.nome || item.cardName;
+        item.category = category;
+        item.responsible = responsible;
+
+        if (item.type === 'single') {
+            const purchaseDate = document.getElementById('invoiceEditPurchaseDate')?.value;
+            if (!purchaseDate) return alert('Informe a data da compra.');
+            item.purchaseDate = purchaseDate;
+            item.totalAmount = amount;
+            item.installmentAmount = amount;
+            item.totalInstallments = 1;
+            item.firstInvoiceMonth = getFirstInvoiceMonthForPurchase(findCardById(cardId), purchaseDate);
+        } else if (item.type === 'installment') {
+            const purchaseDate = document.getElementById('invoiceEditPurchaseDate')?.value;
+            const totalInstallments = parseInt(document.getElementById('invoiceEditTotalInstallments')?.value, 10);
+            if (!purchaseDate) return alert('Informe a data da compra.');
+            if (!Number.isFinite(totalInstallments) || totalInstallments < 1) return alert('Informe o total de parcelas.');
+            item.purchaseDate = purchaseDate;
+            item.totalInstallments = totalInstallments;
+            item.installmentAmount = amount;
+            item.totalAmount = amount * totalInstallments;
+            item.firstInstallmentNumber = 1;
+            item.firstInvoiceMonth = getFirstInvoiceMonthForPurchase(findCardById(cardId), purchaseDate);
+        } else if (item.type === 'existing_installment') {
+            const totalInstallments = parseInt(document.getElementById('invoiceEditTotalInstallments')?.value, 10);
+            const firstInstallmentNumber = parseInt(document.getElementById('invoiceEditFirstInstallmentNumber')?.value, 10);
+            const firstInvoiceMonth = normalizeMonthRef(document.getElementById('invoiceEditMonth')?.value);
+            if (!Number.isFinite(totalInstallments) || totalInstallments < 1) return alert('Informe o total de parcelas.');
+            if (!Number.isFinite(firstInstallmentNumber) || firstInstallmentNumber < 1 || firstInstallmentNumber > totalInstallments) return alert('Informe uma parcela atual valida.');
+            if (!firstInvoiceMonth) return alert('Informe o mes da parcela atual.');
+            item.totalInstallments = totalInstallments;
+            item.firstInstallmentNumber = firstInstallmentNumber;
+            item.firstInvoiceMonth = firstInvoiceMonth;
+            item.installmentAmount = amount;
+            item.totalAmount = amount * totalInstallments;
+        }
+
+        item.updatedAt = now;
+    }
+
+    saveData();
+    closeEditInvoiceItemModal();
+    updateFaturas();
+    renderCardInvoicesMonthOverview();
+    renderSelectedInvoiceDetail();
+    if (typeof renderDashboard === 'function') renderDashboard();
+}
+
+function cancelInvoiceItem(sourceType, itemId, monthRef) {
+    if (sourceType === 'legacyCardTransaction') {
+        alert('Item antigo: exclusao direta nao disponivel neste painel.');
+        return;
+    }
+
+    if (!confirmIfInvoiceIsPaid(monthRef)) return;
+    if (!confirm('Cancelar este item da fatura? Ele deixara de aparecer nas faturas futuras, mas o historico interno sera preservado.')) return;
+
+    const item = findEditableInvoiceItem(sourceType, itemId);
+    if (!item) return alert('Item nao encontrado.');
+
+    const now = new Date().toISOString();
+    item.status = 'cancelled';
+    item.updatedAt = now;
+
+    if (sourceType === 'cardRecurringItem') {
+        item.endInvoiceMonth = addMonthsToMonthRef(monthRef, -1);
+        item.cancelledAt = now;
+    }
+
+    saveData();
+    updateFaturas();
+    renderCardInvoicesMonthOverview();
+    renderSelectedInvoiceDetail();
+    if (typeof renderDashboard === 'function') renderDashboard();
+}
+
+function refreshInvoiceManagementPanels() {
+    if (!document.getElementById('cartoes')) return;
+    ensureCardInvoiceManagementPanels();
+    renderCardInvoicesMonthOverview();
+    renderSelectedInvoiceDetail();
+}
+
+const originalUpdateFaturasBeforeInvoiceManagement = updateFaturas;
+updateFaturas = function() {
+    originalUpdateFaturasBeforeInvoiceManagement();
+    renderCardInvoicesMonthOverview();
+    renderSelectedInvoiceDetail();
+};
+
+const originalInitBeforeInvoiceManagement = init;
+init = function() {
+    originalInitBeforeInvoiceManagement();
+    refreshInvoiceManagementPanels();
+};
+
+const originalShowPageBeforeInvoiceManagement = showPage;
+showPage = function(pageId) {
+    originalShowPageBeforeInvoiceManagement(pageId);
+    if (pageId === 'cartoes') {
+        refreshInvoiceManagementPanels();
+    }
+};
         // ========== SIMULADOR ==========
         function simular() {
             const cartaoId = parseInt(document.getElementById('simCartao').value);
@@ -3603,8 +4135,8 @@ const trainingSteps = [
         id: 'cartoes',
         title: '6. Cadastrar cartões e lançar itens de fatura',
         area: 'Cartões',
-        description: 'Cadastre seus cartões e lance compras à vista, parceladas, parcelas já em andamento e recorrentes.',
-        action: 'Vá em Cartões, cadastre o cartão e use Adicionar item na fatura.'
+        description: 'Use Faturas por mes para abrir uma fatura, ver detalhes, adicionar itens, editar erros, cancelar itens e gerar pagamento.',
+        action: 'Va em Cartoes, clique em uma barrinha de mes, confira o detalhe e use Adicionar item na fatura quando precisar.'
     },
     {
         id: 'faturas',
@@ -4752,14 +5284,14 @@ const CONTEXT_HELP_CONTENT = {
         trainingId: 'entradas-saidas'
     },
     cartoes: {
-        title: 'Como usar Cartões e Faturas',
-        text: 'O cartão registra o compromisso futuro. A saída real do caixa acontece quando você gera e paga a fatura.',
+        title: 'Como usar Cartoes e Faturas',
+        text: 'O cartao organiza compromissos futuros. A saida no fluxo semanal acontece quando voce gera o pagamento da fatura.',
         items: [
-            'Cadastre cartões com limite, fechamento e pagamento.',
-            'Adicione compra à vista, parcelada, parcela em andamento ou recorrente.',
-            'Confira a fatura por mês.',
-            'Gere o pagamento da fatura para entrar no fluxo semanal.',
-            'Dê baixa no pagamento quando realmente pagar.'
+            'Use as barrinhas para escolher o mes da fatura.',
+            'O detalhe mostra itens, totais por cartao e por responsavel.',
+            'Adicione compras, parcelas em andamento e recorrentes no formulario da fatura.',
+            'Edite ou cancele itens lancados errado quando forem itens novos ou recorrentes.',
+            'Gere o pagamento da fatura para entrar no fluxo semanal.'
         ],
         trainingId: 'cartoes-faturas'
     },

@@ -2245,3 +2245,194 @@ body[data-current-page="configuracoes"] #configuracoes.page.active {
     color: var(--text-muted);
     font-size: 12px;
 }
+
+.invoice-month-overview,
+.selected-invoice-detail {
+    border: 1px solid rgba(96, 165, 250, 0.16);
+}
+
+.invoice-panel-heading,
+.selected-invoice-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+.invoice-panel-heading p,
+.selected-invoice-header p,
+.invoice-muted {
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.invoice-month-bars {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+}
+
+.invoice-month-card {
+    text-align: left;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    background: rgba(15, 23, 42, 0.50);
+    color: var(--text-main);
+    cursor: pointer;
+}
+
+.invoice-month-card.active {
+    border-color: rgba(96, 165, 250, 0.7);
+    box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.18);
+}
+
+.invoice-month-card-top,
+.selected-invoice-summary div,
+.selected-invoice-breakdowns div div {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.invoice-month-total {
+    margin-top: 8px;
+    font-size: 20px;
+    font-weight: 800;
+}
+
+.invoice-month-due {
+    min-height: 18px;
+    margin-top: 3px;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.invoice-month-bar {
+    height: 8px;
+    margin-top: 10px;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.20);
+    overflow: hidden;
+}
+
+.invoice-month-bar-fill {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--primary), var(--success));
+}
+
+.selected-invoice-total {
+    text-align: right;
+}
+
+.selected-invoice-total span,
+.selected-invoice-summary span {
+    display: block;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.selected-invoice-total strong {
+    font-size: 28px;
+}
+
+.selected-invoice-summary,
+.selected-invoice-breakdowns {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.selected-invoice-summary > div,
+.selected-invoice-breakdowns > div,
+.invoice-card-actions,
+.selected-invoice-item {
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    background: rgba(15, 23, 42, 0.42);
+}
+
+.selected-invoice-actions,
+.selected-invoice-items {
+    display: grid;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.invoice-card-actions,
+.selected-invoice-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.invoice-card-action-buttons,
+.invoice-item-actions,
+.invoice-edit-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.invoice-payment-info {
+    margin-top: 4px;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.selected-invoice-item-side {
+    text-align: right;
+}
+
+.invoice-edit-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(2, 6, 23, 0.72);
+}
+
+.invoice-edit-card {
+    width: min(560px, 100%);
+    max-height: 90vh;
+    overflow: auto;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    border-radius: var(--radius-lg);
+    padding: 18px;
+    background: var(--surface);
+    box-shadow: var(--shadow-lg);
+}
+
+.legacy-invoice-panel {
+    opacity: 0.72;
+}
+
+.legacy-invoice-panel h2::after {
+    content: ' (visao antiga)';
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+@media (max-width: 768px) {
+    .selected-invoice-total,
+    .selected-invoice-item-side {
+        text-align: left;
+    }
+
+    .invoice-card-action-buttons,
+    .invoice-item-actions {
+        justify-content: flex-start;
+    }
+}
