@@ -6831,3 +6831,392 @@ if (typeof showPage === 'function' && !window.__showPagePatch30AWrapped) {
 window.addEventListener('load', function() {
     setTimeout(hideLegacyCreditCardLauncher, 80);
 });
+
+
+/* PATCH 35 — FILTROS E EXCECAO DE RECORRENTE */
+const INVOICE_FILTERS_STORAGE_KEY = 'financeInvoiceFiltersV1';
+
+function getInvoiceFilterState() {
+    try {
+        const saved = localStorage.getItem(INVOICE_FILTERS_STORAGE_KEY);
+        const parsed = saved ? JSON.parse(saved) : {};
+        return {
+            cardId: parsed.cardId || 'all',
+            responsible: parsed.responsible || 'all',
+            search: parsed.search || ''
+        };
+    } catch (error) {
+        return { cardId: 'all', responsible: 'all', search: '' };
+    }
+}
+
+function saveInvoiceFilterState(filters) {
+    localStorage.setItem(INVOICE_FILTERS_STORAGE_KEY, JSON.stringify({
+        cardId: filters.cardId || 'all',
+        responsible: filters.responsible || 'all',
+        search: filters.search || ''
+    }));
+}
+
+function normalizeInvoiceText(value) {
+    return String(value || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim();
+}
+
+function invoiceItemMatchesCurrentFilters(item) {
+    const filters = getInvoiceFilterState();
+
+    if (filters.cardId !== 'all' && String(item.cardId) !== String(filters.cardId)) {
+        return false;
+    }
+
+    if (filters.responsible !== 'all') {
+        const itemResponsible = String(item.responsavel || item.responsible || '');
+        if (itemResponsible !== filters.responsible) return false;
+    }
+
+    const search = normalizeInvoiceText(filters.search);
+    if (search) {
+        const haystack = normalizeInvoiceText([
+            item.descricao,
+            item.description,
+            item.cardName,
+            item.categoria,
+            item.category,
+            item.responsavel,
+            item.responsible,
+            item.origemLabel,
+            item.parcela
+        ].join(' '));
+
+        if (!haystack.includes(search)) return false;
+    }
+
+    return true;
+}
+
+function getInvoiceFilterActiveLabels() {
+    const filters = getInvoiceFilterState();
+    const labels = [];
+
+    if (filters.cardId !== 'all') {
+        const card = findCardById(filters.cardId);
+        labels.push('cartao: ' + (card ? card.nome : filters.cardId));
+    }
+
+    if (filters.responsible !== 'all') {
+        labels.push('responsavel: ' + filters.responsible);
+    }
+
+    if (filters.search) {
+        labels.push('busca: ' + filters.search);
+    }
+
+    return labels;
+}
+
+function updateInvoiceFilter(field, value) {
+    const filters = getInvoiceFilterState();
+    filters[field] = value;
+    saveInvoiceFilterState(filters);
+
+    if (typeof renderCardInvoicesMonthOverview === 'function') {
+        renderCardInvoicesMonthOverview();
+    }
+
+    if (typeof renderSelectedInvoiceDetail === 'function') {
+        renderSelectedInvoiceDetail();
+    }
+}
+
+function resetInvoiceFilters() {
+    saveInvoiceFilterState({ cardId: 'all', responsible: 'all', search: '' });
+
+    if (typeof renderCardInvoicesMonthOverview === 'function') {
+        renderCardInvoicesMonthOverview();
+    }
+
+    if (typeof renderSelectedInvoiceDetail === 'function') {
+        renderSelectedInvoiceDetail();
+    }
+}
+
+function renderInvoiceFilterPanel() {
+    const container = document.getElementById('cardInvoicesMonthOverview');
+    if (!container) return;
+
+    let panel = document.getElementById('invoiceFilterPanel');
+    const filters = getInvoiceFilterState();
+
+    const cardOptions = [
+        '<option value="all">Todos os cartoes</option>',
+        ...(Array.isArray(data.cartoes) ? data.cartoes : []).map(card => {
+            const selected = String(filters.cardId) === String(card.id) ? 'selected' : '';
+            return '<option value="' + String(card.id) + '" ' + selected + '>' + escapeHtml(card.nome || 'Cartao') + '</option>';
+        })
+    ].join('');
+
+    const responsibleList = Array.isArray(data.responsaveis) ? data.responsaveis : [];
+    const responsibleOptions = [
+        '<option value="all">Todos os responsaveis</option>',
+        ...responsibleList.map(resp => {
+            const selected = String(filters.responsible) === String(resp) ? 'selected' : '';
+            return '<option value="' + escapeHtml(resp) + '" ' + selected + '>' + escapeHtml(resp) + '</option>';
+        })
+    ].join('');
+
+    const activeLabels = getInvoiceFilterActiveLabels();
+    const activeNote = activeLabels.length
+        ? '<div class="invoice-filter-active-note">Filtro ativo: ' + escapeHtml(activeLabels.join(' · ')) + '</div>'
+        : '<div class="invoice-filter-active-note">Mostrando todas as faturas.</div>';
+
+    const html = `
+        <div class="invoice-filter-header">
+            <div>
+                <strong>Filtrar faturas</strong><br>
+                <span>Use para ver somente um cartao, um responsavel ou um texto como Amazon Prime.</span>
+            </div>
+        </div>
+
+        <div class="invoice-filter-grid">
+            <div>
+                <label>Cartao</label>
+                <select id="invoiceFilterCardId" onchange="updateInvoiceFilter('cardId', this.value)">
+                    ${cardOptions}
+                </select>
+            </div>
+
+            <div>
+                <label>Responsavel</label>
+                <select id="invoiceFilterResponsible" onchange="updateInvoiceFilter('responsible', this.value)">
+                    ${responsibleOptions}
+                </select>
+            </div>
+
+            <div>
+                <label>Buscar descricao</label>
+                <input id="invoiceFilterSearch" value="${escapeHtml(filters.search)}" placeholder="Ex: Amazon Prime, consulta, mercado" oninput="updateInvoiceFilter('search', this.value)">
+            </div>
+
+            <div>
+                <button class="secondary invoice-filter-reset" type="button" onclick="resetInvoiceFilters()">Limpar</button>
+            </div>
+        </div>
+
+        ${activeNote}
+    `;
+
+    if (!panel) {
+        panel = document.createElement('div');
+        panel.id = 'invoiceFilterPanel';
+        panel.className = 'invoice-filter-panel';
+
+        const hero = container.querySelector('.invoice-dashboard-hero');
+        if (hero && hero.parentNode) {
+            hero.insertAdjacentElement('afterend', panel);
+        } else {
+            container.insertBefore(panel, container.firstChild);
+        }
+    }
+
+    panel.innerHTML = html;
+}
+
+function normalizeRecurringInvoiceExclusions() {
+    if (!Array.isArray(data.cardRecurringItems)) return;
+
+    data.cardRecurringItems.forEach(item => {
+        if (!Array.isArray(item.excludedInvoiceMonths)) {
+            item.excludedInvoiceMonths = [];
+        }
+
+        item.excludedInvoiceMonths = item.excludedInvoiceMonths
+            .map(normalizeMonthRef)
+            .filter(Boolean)
+            .filter((monthRef, index, arr) => arr.indexOf(monthRef) === index);
+    });
+}
+
+function isRecurringExcludedInInvoiceMonth(item, monthRef) {
+    const normalizedMonth = normalizeMonthRef(monthRef);
+    if (!item || !normalizedMonth) return false;
+
+    const excluded = Array.isArray(item.excludedInvoiceMonths)
+        ? item.excludedInvoiceMonths
+        : [];
+
+    return excluded.map(normalizeMonthRef).includes(normalizedMonth);
+}
+
+function addRecurringInvoiceMonthExclusion(item, monthRef) {
+    const normalizedMonth = normalizeMonthRef(monthRef);
+    if (!item || !normalizedMonth) return;
+
+    if (!Array.isArray(item.excludedInvoiceMonths)) {
+        item.excludedInvoiceMonths = [];
+    }
+
+    if (!item.excludedInvoiceMonths.includes(normalizedMonth)) {
+        item.excludedInvoiceMonths.push(normalizedMonth);
+    }
+
+    item.excludedInvoiceMonths.sort();
+}
+
+if (typeof getSelectedInvoiceItems === 'function' && !window.__patch35GetSelectedInvoiceItemsWrapped) {
+    window.__patch35GetSelectedInvoiceItemsWrapped = true;
+    const originalGetSelectedInvoiceItemsBeforePatch35 = getSelectedInvoiceItems;
+
+    getSelectedInvoiceItems = function(monthRef = getSelectedInvoiceMonthRef()) {
+        const items = originalGetSelectedInvoiceItemsBeforePatch35(monthRef);
+        return items.filter(invoiceItemMatchesCurrentFilters);
+    };
+}
+
+if (typeof isRecurringItemActiveForMonth === 'function' && !window.__patch35RecurringActiveWrapped) {
+    window.__patch35RecurringActiveWrapped = true;
+    const originalIsRecurringItemActiveForMonthBeforePatch35 = isRecurringItemActiveForMonth;
+
+    isRecurringItemActiveForMonth = function(item, mesRef) {
+        const monthRef = normalizeMonthRef(mesRef);
+
+        if (!item || !monthRef) return false;
+
+        if (isRecurringExcludedInInvoiceMonth(item, monthRef)) {
+            return false;
+        }
+
+        // Se foi cancelada com endInvoiceMonth, ainda pode aparecer ate o mes final.
+        if (item.status === 'cancelled' && item.endInvoiceMonth) {
+            const start = normalizeMonthRef(item.startInvoiceMonth);
+            const end = normalizeMonthRef(item.endInvoiceMonth);
+
+            if (start && monthRef < start) return false;
+            if (end && monthRef > end) return false;
+
+            return true;
+        }
+
+        return originalIsRecurringItemActiveForMonthBeforePatch35(item, mesRef);
+    };
+}
+
+if (typeof cancelInvoiceItem === 'function' && !window.__patch35CancelInvoiceItemWrapped) {
+    window.__patch35CancelInvoiceItemWrapped = true;
+
+    cancelInvoiceItem = function(sourceType, itemId, monthRef) {
+        const normalizedMonth = normalizeMonthRef(monthRef);
+
+        if (sourceType === 'legacyCardTransaction') {
+            alert('Item antigo: exclusao direta nao disponivel neste painel.');
+            return;
+        }
+
+        if (typeof confirmIfInvoiceIsPaid === 'function' && !confirmIfInvoiceIsPaid(normalizedMonth)) {
+            return;
+        }
+
+        const item = typeof findEditableInvoiceItem === 'function'
+            ? findEditableInvoiceItem(sourceType, itemId)
+            : null;
+
+        if (!item) {
+            alert('Item nao encontrado.');
+            return;
+        }
+
+        const now = new Date().toISOString();
+
+        if (sourceType === 'cardRecurringItem') {
+            const choice = prompt(
+                'Este item e recorrente. O que deseja cancelar?\n\n' +
+                '1 - Somente esta fatura (' + normalizedMonth + ')\n' +
+                '2 - Desta fatura em diante\n' +
+                '3 - Todas as faturas desta recorrencia\n\n' +
+                'Digite 1, 2 ou 3:',
+                '1'
+            );
+
+            if (choice === null) return;
+
+            if (choice === '1') {
+                addRecurringInvoiceMonthExclusion(item, normalizedMonth);
+                item.updatedAt = now;
+            } else if (choice === '2') {
+                item.status = 'cancelled';
+                item.endInvoiceMonth = addMonthsToMonthRef(normalizedMonth, -1);
+                item.cancelledAt = now;
+                item.updatedAt = now;
+            } else if (choice === '3') {
+                item.status = 'cancelled';
+                item.endInvoiceMonth = null;
+                item.cancelledAt = now;
+                item.updatedAt = now;
+            } else {
+                alert('Opcao invalida. Nada foi alterado.');
+                return;
+            }
+        } else {
+            if (!confirm('Cancelar este item da fatura? Ele deixara de aparecer na fatura, mas o historico interno sera preservado.')) {
+                return;
+            }
+
+            item.status = 'cancelled';
+            item.updatedAt = now;
+        }
+
+        normalizeRecurringInvoiceExclusions();
+        saveData();
+
+        if (typeof updateFaturas === 'function') updateFaturas();
+        if (typeof renderCardInvoicesMonthOverview === 'function') renderCardInvoicesMonthOverview();
+        if (typeof renderSelectedInvoiceDetail === 'function') renderSelectedInvoiceDetail();
+        if (typeof renderDashboard === 'function') renderDashboard();
+    };
+}
+
+if (typeof renderCardInvoicesMonthOverview === 'function' && !window.__patch35RenderOverviewWrapped) {
+    window.__patch35RenderOverviewWrapped = true;
+    const originalRenderCardInvoicesMonthOverviewBeforePatch35 = renderCardInvoicesMonthOverview;
+
+    renderCardInvoicesMonthOverview = function() {
+        originalRenderCardInvoicesMonthOverviewBeforePatch35();
+        renderInvoiceFilterPanel();
+    };
+}
+
+if (typeof renderSelectedInvoiceDetail === 'function' && !window.__patch35RenderDetailWrapped) {
+    window.__patch35RenderDetailWrapped = true;
+    const originalRenderSelectedInvoiceDetailBeforePatch35 = renderSelectedInvoiceDetail;
+
+    renderSelectedInvoiceDetail = function() {
+        originalRenderSelectedInvoiceDetailBeforePatch35();
+
+        const labels = getInvoiceFilterActiveLabels();
+        const container = document.getElementById('selectedInvoiceDetail');
+        if (!container || !labels.length) return;
+
+        const header = container.querySelector('.selected-invoice-header');
+        if (header && !container.querySelector('.invoice-filter-active-note[data-detail-filter="true"]')) {
+            const note = document.createElement('div');
+            note.className = 'invoice-filter-active-note';
+            note.setAttribute('data-detail-filter', 'true');
+            note.textContent = 'Detalhe filtrado por: ' + labels.join(' · ');
+            header.insertAdjacentElement('afterend', note);
+        }
+    };
+}
+
+window.addEventListener('load', function() {
+    setTimeout(() => {
+        normalizeRecurringInvoiceExclusions();
+
+        if (document.getElementById('cartoes')) {
+            if (typeof renderCardInvoicesMonthOverview === 'function') renderCardInvoicesMonthOverview();
+            if (typeof renderSelectedInvoiceDetail === 'function') renderSelectedInvoiceDetail();
+        }
+    }, 200);
+});
