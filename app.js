@@ -2016,33 +2016,213 @@ function getFirstInvoiceMonthForPurchase(card, purchaseDate) {
             document.getElementById('mercadoMedia').textContent = formatCurrency(media);
         }
 
-        function updateCardItemForm() {
-            const type = document.getElementById('cardItemType')?.value;
-            const parcelas = document.getElementById('cardItemTotalInstallments');
-            const parcelaAtual = document.getElementById('cardItemFirstInstallmentNumber');
-            const valorParcela = document.getElementById('cardItemInstallmentAmount');
-            const firstInvoiceMonth = document.getElementById('cardItemFirstInvoiceMonth');
+        let isSyncingCardItemSmartForm = false;
 
-            if (parcelas) {
-                parcelas.disabled = type === 'single' || type === 'recurring';
-                if (type === 'single' || type === 'recurring') parcelas.value = '1';
+        function getCardItemEl(id) {
+            return document.getElementById(id);
+        }
+
+        function getCardItemFormGroup(id) {
+            const el = getCardItemEl(id);
+            return el ? el.closest('.form-group') : null;
+        }
+
+        function setCardItemFieldVisible(id, visible) {
+            const group = getCardItemFormGroup(id);
+            if (group) group.classList.toggle('card-item-hidden', !visible);
+        }
+
+        function setCardItemFieldDisabled(id, disabled) {
+            const el = getCardItemEl(id);
+            if (el) el.disabled = Boolean(disabled);
+        }
+
+        function setCardItemFieldLabel(id, text) {
+            const group = getCardItemFormGroup(id);
+            const label = group ? group.querySelector('label') : null;
+            if (label) label.textContent = text;
+        }
+
+        function getSelectedCardItemCard() {
+            return findCardById(getCardItemEl('cardItemCardId')?.value);
+        }
+
+        function getCardItemTypeValue() {
+            return getCardItemEl('cardItemType')?.value || 'single';
+        }
+
+        function getCardItemPurchaseDateValue() {
+            return getCardItemEl('cardItemPurchaseDate')?.value || '';
+        }
+
+        function getCardItemTotalAmountValue() {
+            return parseCurrencyInput(getCardItemEl('cardItemTotalAmount')?.value);
+        }
+
+        function getCardItemInstallmentsValue() {
+            const value = parseInt(getCardItemEl('cardItemTotalInstallments')?.value, 10);
+            return Number.isFinite(value) && value > 0 ? value : 1;
+        }
+
+        function getCardItemComputedFirstInvoiceMonthForForm() {
+            const card = getSelectedCardItemCard();
+            const type = getCardItemTypeValue();
+
+            if (type === 'existing_installment' || type === 'recurring') {
+                return normalizeMonthRef(getCardItemEl('cardItemFirstInvoiceMonth')?.value);
             }
 
-            if (parcelaAtual) {
-                parcelaAtual.disabled = type !== 'existing_installment';
-                if (type !== 'existing_installment') parcelaAtual.value = '1';
+            return getFirstInvoiceMonthForPurchase(card, getCardItemPurchaseDateValue());
+        }
+
+        function getCardItemComputedDueDate(card, monthRef) {
+            if (!card || !monthRef) return null;
+            return getInvoicePaymentDueDate(card, monthRef);
+        }
+
+        function hasManualCardItemInstallmentAmount() {
+            const el = getCardItemEl('cardItemInstallmentAmount');
+            return el?.dataset.manual === 'true';
+        }
+
+        function syncCardItemInstallmentAmount() {
+            const type = getCardItemTypeValue();
+            const amountEl = getCardItemEl('cardItemInstallmentAmount');
+            if (!amountEl) return;
+
+            if (type !== 'installment') {
+                if (type !== 'existing_installment') amountEl.dataset.manual = 'false';
+                return;
             }
 
-            if (valorParcela) {
-                valorParcela.disabled = type !== 'existing_installment';
-                if (type !== 'existing_installment') valorParcela.value = '';
-            }
+            const totalAmount = getCardItemTotalAmountValue();
+            const installments = getCardItemInstallmentsValue();
+            if (!Number.isFinite(totalAmount) || totalAmount <= 0 || installments <= 0) return;
+            if (hasManualCardItemInstallmentAmount() && amountEl.value) return;
 
-            if (firstInvoiceMonth) {
-                firstInvoiceMonth.disabled = !(type === 'existing_installment' || type === 'recurring');
-            }
+            amountEl.value = (totalAmount / installments).toFixed(2);
+            amountEl.dataset.manual = 'false';
+        }
 
+        function syncCardItemFirstInvoiceMonth() {
+            const type = getCardItemTypeValue();
+            const firstInvoiceMonth = getCardItemEl('cardItemFirstInvoiceMonth');
+            if (!firstInvoiceMonth) return;
+
+            if (type === 'single' || type === 'installment') {
+                const computed = getCardItemComputedFirstInvoiceMonthForForm();
+                if (computed) firstInvoiceMonth.value = computed;
+            }
+        }
+
+        function getCardItemPreviewParts(item) {
+            const card = findCardById(item.cardId);
+            const installments = generateCardItemInstallmentsPreview(item);
+            const first = installments[0];
+            const last = installments[installments.length - 1];
+            const firstDueDate = first ? getCardItemComputedDueDate(card, first.invoiceMonth) : null;
+            const lastDueDate = last ? getCardItemComputedDueDate(card, last.invoiceMonth) : null;
+            return { card, installments, first, last, firstDueDate, lastDueDate };
+        }
+
+        function renderCardItemComputedSummary() {
             updateCardItemPreview();
+        }
+
+        function syncCardItemSmartForm() {
+            if (isSyncingCardItemSmartForm) return;
+            isSyncingCardItemSmartForm = true;
+
+            const type = getCardItemTypeValue();
+            const isSingle = type === 'single';
+            const isInstallment = type === 'installment';
+            const isExisting = type === 'existing_installment';
+            const isRecurring = type === 'recurring';
+
+            setCardItemFieldVisible('cardItemPurchaseDate', isSingle || isInstallment);
+            setCardItemFieldVisible('cardItemTotalAmount', isSingle || isInstallment || isRecurring);
+            setCardItemFieldVisible('cardItemTotalInstallments', isInstallment || isExisting);
+            setCardItemFieldVisible('cardItemFirstInstallmentNumber', isExisting);
+            setCardItemFieldVisible('cardItemFirstInvoiceMonth', isExisting || isRecurring);
+            setCardItemFieldVisible('cardItemInstallmentAmount', isInstallment || isExisting);
+
+            setCardItemFieldDisabled('cardItemTotalInstallments', isSingle || isRecurring);
+            setCardItemFieldDisabled('cardItemFirstInstallmentNumber', !isExisting);
+            setCardItemFieldDisabled('cardItemFirstInvoiceMonth', !(isExisting || isRecurring));
+            setCardItemFieldDisabled('cardItemInstallmentAmount', !(isInstallment || isExisting));
+
+            setCardItemFieldLabel('cardItemPurchaseDate', 'Data da compra');
+            setCardItemFieldLabel('cardItemTotalAmount', isRecurring ? 'Valor mensal (R$)' : 'Valor total (R$)');
+            setCardItemFieldLabel('cardItemTotalInstallments', isExisting ? 'Total de parcelas' : 'Parcelas');
+            setCardItemFieldLabel('cardItemFirstInstallmentNumber', 'Parcela atual');
+            setCardItemFieldLabel('cardItemFirstInvoiceMonth', isRecurring ? 'Primeira fatura da recorrencia' : 'Mes da parcela atual');
+            setCardItemFieldLabel('cardItemInstallmentAmount', isInstallment ? 'Valor da parcela (editavel)' : 'Valor da parcela (R$)');
+
+            const parcelas = getCardItemEl('cardItemTotalInstallments');
+            if (parcelas && (isSingle || isRecurring)) parcelas.value = '1';
+
+            const parcelaAtual = getCardItemEl('cardItemFirstInstallmentNumber');
+            if (parcelaAtual && !isExisting) parcelaAtual.value = '1';
+
+            const valorParcela = getCardItemEl('cardItemInstallmentAmount');
+            if (valorParcela && !(isInstallment || isExisting)) {
+                valorParcela.value = '';
+                valorParcela.dataset.manual = 'false';
+            }
+
+            syncCardItemFirstInvoiceMonth();
+            syncCardItemInstallmentAmount();
+
+            isSyncingCardItemSmartForm = false;
+            renderCardItemComputedSummary();
+        }
+
+        function setupCardItemSmartFormListeners() {
+            if (window.__cardItemSmartFormListenersReady) return;
+            window.__cardItemSmartFormListenersReady = true;
+
+            ['cardItemCardId', 'cardItemPurchaseDate', 'cardItemDescription', 'cardItemTotalAmount', 'cardItemTotalInstallments', 'cardItemFirstInstallmentNumber', 'cardItemFirstInvoiceMonth', 'cardItemCategory', 'cardItemResponsible'].forEach(id => {
+                getCardItemEl(id)?.addEventListener('input', syncCardItemSmartForm);
+                getCardItemEl(id)?.addEventListener('change', syncCardItemSmartForm);
+            });
+
+            const installmentAmount = getCardItemEl('cardItemInstallmentAmount');
+            installmentAmount?.addEventListener('input', function() {
+                if (getCardItemTypeValue() === 'installment') {
+                    installmentAmount.dataset.manual = installmentAmount.value ? 'true' : 'false';
+                }
+                syncCardItemSmartForm();
+            });
+            installmentAmount?.addEventListener('change', syncCardItemSmartForm);
+            getCardItemEl('cardItemType')?.addEventListener('change', function() {
+                const amount = getCardItemEl('cardItemInstallmentAmount');
+                if (amount) amount.dataset.manual = 'false';
+                syncCardItemSmartForm();
+            });
+        }
+
+        function showCardItemSavedInInvoice(firstMonth) {
+            if (!firstMonth) return;
+
+            const mesReferencia = document.getElementById('mesReferencia');
+            if (mesReferencia) mesReferencia.value = firstMonth;
+            updateFaturas();
+
+            let status = document.getElementById('cardItemSaveStatus');
+            const preview = document.getElementById('cardItemPreview');
+            if (!status) {
+                status = document.createElement('div');
+                status.id = 'cardItemSaveStatus';
+                status.className = 'card-item-save-status';
+                preview?.insertAdjacentElement('afterend', status);
+            }
+
+            status.textContent = 'Item salvo na fatura de ' + firstMonth + '. Se nao aparecer no mes atual, confira o seletor de mes da fatura.';
+            status.style.display = 'block';
+        }
+        function updateCardItemForm() {
+            setupCardItemSmartFormListeners();
+            syncCardItemSmartForm();
         }
 
         function buildCardRecurringItemFromForm() {
@@ -2093,35 +2273,44 @@ function getFirstInvoiceMonthForPurchase(card, purchaseDate) {
             const category = document.getElementById('cardItemCategory')?.value;
             const responsible = document.getElementById('cardItemResponsible')?.value;
 
-            if (!cardId) return { error: 'Selecione um cartao.' };
+            if (!cardId) return { error: 'Selecione um cartao antes de adicionar o item.' };
             const card = findCardById(cardId);
-            if (!card) return { error: 'Cartao nao encontrado.' };
-            if (!type || !['single', 'installment', 'existing_installment', 'recurring'].includes(type)) return { error: 'Tipo invalido.' };
-            if (!description) return { error: 'Informe a descricao.' };
-            if (!category) return { error: 'Informe a categoria.' };
-            if (!responsible) return { error: 'Informe o responsavel.' };
-            if (!Number.isFinite(totalInstallments) || totalInstallments < 1) return { error: 'Informe um numero de parcelas valido.' };
+            if (!card) return { error: 'Cartao nao encontrado. Confira o cadastro do cartao.' };
+            if (!type || !['single', 'installment', 'existing_installment', 'recurring'].includes(type)) return { error: 'Tipo de item invalido.' };
+            if (!description) return { error: 'Informe a descricao do item.' };
+            if (!category) return { error: 'Informe a categoria do item.' };
+            if (!responsible) return { error: 'Informe o responsavel pelo item.' };
 
             let totalAmount = totalAmountInput;
             let installmentAmount;
             let firstInvoiceMonth;
 
             if (type === 'existing_installment') {
+                totalInstallments = Number.isFinite(totalInstallments) ? totalInstallments : 1;
                 firstInstallmentNumber = Number.isFinite(firstInstallmentNumber) ? firstInstallmentNumber : 1;
-                if (firstInstallmentNumber < 1 || firstInstallmentNumber > totalInstallments) return { error: 'Informe uma parcela atual valida.' };
-                if (!Number.isFinite(installmentAmountInput) || installmentAmountInput <= 0) return { error: 'Informe um valor de parcela valido.' };
+                if (totalInstallments < 1) return { error: 'Informe o total de parcelas.' };
+                if (firstInstallmentNumber < 1 || firstInstallmentNumber > totalInstallments) return { error: 'Informe uma parcela atual entre 1 e o total de parcelas.' };
+                if (!Number.isFinite(installmentAmountInput) || installmentAmountInput <= 0) return { error: 'Informe o valor da parcela atual.' };
                 firstInvoiceMonth = normalizeMonthRef(firstInvoiceMonthInput);
-                if (!firstInvoiceMonth) return { error: 'Informe o mes da primeira fatura.' };
+                if (!firstInvoiceMonth) return { error: 'Informe o mes da parcela atual.' };
                 installmentAmount = installmentAmountInput;
                 totalAmount = installmentAmount * totalInstallments;
             } else {
                 if (!purchaseDate) return { error: 'Informe a data da compra.' };
-                if (!Number.isFinite(totalAmount) || totalAmount <= 0) return { error: 'Informe um valor valido.' };
-                if (type === 'single') totalInstallments = 1;
+                if (!Number.isFinite(totalAmount) || totalAmount <= 0) return { error: 'Informe um valor maior que zero.' };
+                if (type === 'single') {
+                    totalInstallments = 1;
+                    installmentAmount = totalAmount;
+                } else {
+                    totalInstallments = Number.isFinite(totalInstallments) ? totalInstallments : 1;
+                    if (totalInstallments < 1) return { error: 'Informe um numero de parcelas maior que zero.' };
+                    installmentAmount = Number.isFinite(installmentAmountInput) && installmentAmountInput > 0
+                        ? installmentAmountInput
+                        : totalAmount / totalInstallments;
+                }
                 firstInstallmentNumber = 1;
                 firstInvoiceMonth = getFirstInvoiceMonthForPurchase(card, purchaseDate);
-                if (!firstInvoiceMonth) return { error: 'Nao foi possivel calcular a primeira fatura.' };
-                installmentAmount = totalAmount / totalInstallments;
+                if (!firstInvoiceMonth) return { error: 'Nao foi possivel calcular a primeira fatura. Confira cartao e data da compra.' };
             }
 
             const now = new Date().toISOString();
@@ -2161,9 +2350,9 @@ function getFirstInvoiceMonthForPurchase(card, purchaseDate) {
                 }
 
                 saveData();
-                updateFaturas();
                 renderCartoes();
                 renderCardRecurringItems();
+                showCardItemSavedInInvoice(recurringItem.startInvoiceMonth);
 
                 document.getElementById('cardItemDescription').value = '';
                 document.getElementById('cardItemTotalAmount').value = '';
@@ -2171,7 +2360,7 @@ function getFirstInvoiceMonthForPurchase(card, purchaseDate) {
                 if (preview) preview.style.display = 'none';
                 updateCardItemForm();
 
-                alert('Recorrente adicionada ao cartao.');
+                alert('Recorrente adicionada ao cartao na fatura de ' + recurringItem.startInvoiceMonth + '.');
                 return;
             }
 
@@ -2179,27 +2368,29 @@ function getFirstInvoiceMonthForPurchase(card, purchaseDate) {
             if (result.error) return alert(result.error);
 
             const item = result.item;
-            data.cardItems.push(item);
-
             const parcelas = generateCardItemInstallmentsPreview(item);
+            const firstMonth = parcelas[0]?.invoiceMonth || item.firstInvoiceMonth;
+
+            data.cardItems.push(item);
             parcelas.forEach(parcela => createCardInvoiceIfMissing(item.cardId, parcela.invoiceMonth));
 
             saveData();
-            updateFaturas();
             renderCartoes();
+            showCardItemSavedInInvoice(firstMonth);
 
             document.getElementById('cardItemDescription').value = '';
             document.getElementById('cardItemTotalAmount').value = '';
             document.getElementById('cardItemTotalInstallments').value = '1';
             document.getElementById('cardItemFirstInstallmentNumber').value = '1';
             document.getElementById('cardItemInstallmentAmount').value = '';
+            const amount = document.getElementById('cardItemInstallmentAmount');
+            if (amount) amount.dataset.manual = 'false';
             const preview = document.getElementById('cardItemPreview');
             if (preview) preview.style.display = 'none';
             updateCardItemForm();
 
-            alert('Item adicionado a fatura.');
+            alert('Item salvo na fatura de ' + firstMonth + '. Se nao aparecer no mes atual, confira o seletor de mes da fatura.');
         }
-
         function updateCardItemPreview() {
             const preview = document.getElementById('cardItemPreview');
             if (!preview) return;
@@ -2211,7 +2402,10 @@ function getFirstInvoiceMonthForPurchase(card, purchaseDate) {
                     return;
                 }
                 const item = recurringResult.item;
-                preview.innerHTML = 'Recorrente mensal<br>Valor mensal: ' + formatCurrency(item.amount) + '<br>Inicio: ' + item.startInvoiceMonth + '<br>Aparecera todos os meses ate ser desativada.';
+                const card = findCardById(item.cardId);
+                const dueDate = getCardItemComputedDueDate(card, item.startInvoiceMonth);
+                preview.className = 'alert alert-info card-item-computed-box';
+                preview.innerHTML = 'Recorrente mensal<br>Valor mensal: ' + formatCurrency(item.amount) + '<br>Primeira fatura: ' + item.startInvoiceMonth + (dueDate ? '<br>Vencimento previsto: ' + formatDate(dueDate) : '') + '<br>Aparecera todos os meses ate ser desativada.';
                 preview.style.display = 'block';
                 return;
             }
@@ -2223,22 +2417,24 @@ function getFirstInvoiceMonthForPurchase(card, purchaseDate) {
             }
 
             const item = result.item;
-            const parcelas = generateCardItemInstallmentsPreview(item);
+            const parts = getCardItemPreviewParts(item);
+            const parcelas = parts.installments;
             if (parcelas.length === 0) {
                 preview.style.display = 'none';
                 return;
             }
 
+            preview.className = 'alert alert-info card-item-computed-box';
+
             if (item.type === 'single') {
-                preview.innerHTML = 'Compra a vista de ' + formatCurrency(item.totalAmount) + '<br>Fatura: ' + parcelas[0].invoiceMonth;
+                preview.innerHTML = 'Compra a vista de ' + formatCurrency(item.totalAmount) + '<br>Fatura de pagamento: ' + parts.first.invoiceMonth + (parts.firstDueDate ? '<br>Vencimento previsto: ' + formatDate(parts.firstDueDate) : '');
             } else if (item.type === 'existing_installment') {
-                preview.innerHTML = 'Parcela ja em andamento<br>Parcela inicial: ' + item.firstInstallmentNumber + '/' + item.totalInstallments + '<br>Valor da parcela: ' + formatCurrency(item.installmentAmount) + '<br>Primeira fatura: ' + parcelas[0].invoiceMonth + '<br>Ultima fatura: ' + parcelas[parcelas.length - 1].invoiceMonth;
+                preview.innerHTML = 'Parcela ja em andamento<br>Parcela atual: ' + item.firstInstallmentNumber + '/' + item.totalInstallments + '<br>Valor da parcela: ' + formatCurrency(item.installmentAmount) + '<br>Fatura da parcela atual: ' + parts.first.invoiceMonth + (parts.firstDueDate ? '<br>Vencimento da parcela atual: ' + formatDate(parts.firstDueDate) : '') + '<br>Ultima fatura: ' + parts.last.invoiceMonth + (parts.lastDueDate ? '<br>Vencimento da ultima fatura: ' + formatDate(parts.lastDueDate) : '');
             } else {
-                preview.innerHTML = item.totalInstallments + 'x de ' + formatCurrency(item.installmentAmount) + '<br>Primeira fatura: ' + parcelas[0].invoiceMonth + '<br>Ultima fatura: ' + parcelas[parcelas.length - 1].invoiceMonth;
+                preview.innerHTML = item.totalInstallments + 'x de ' + formatCurrency(item.installmentAmount) + '<br>Primeira fatura: ' + parts.first.invoiceMonth + (parts.firstDueDate ? '<br>Vencimento da primeira fatura: ' + formatDate(parts.firstDueDate) : '') + '<br>Ultima fatura: ' + parts.last.invoiceMonth + (parts.lastDueDate ? '<br>Vencimento da ultima fatura: ' + formatDate(parts.lastDueDate) : '');
             }
             preview.style.display = 'block';
         }
-
         function isRecurringItemActiveForMonth(item, monthRef) {
             const start = normalizeMonthRef(item?.startInvoiceMonth);
             const month = normalizeMonthRef(monthRef);
@@ -2697,11 +2893,7 @@ function gerarLancamentoPagamentoFatura(cartaoId, mesRef) {
         }
 
 
-        ['cardItemCardId', 'cardItemPurchaseDate', 'cardItemDescription', 'cardItemTotalAmount', 'cardItemTotalInstallments', 'cardItemFirstInstallmentNumber', 'cardItemFirstInvoiceMonth', 'cardItemInstallmentAmount', 'cardItemCategory', 'cardItemResponsible'].forEach(id => {
-            document.getElementById(id)?.addEventListener('input', updateCardItemPreview);
-            document.getElementById(id)?.addEventListener('change', updateCardItemPreview);
-        });
-        document.getElementById('cardItemType')?.addEventListener('change', updateCardItemForm);
+        setupCardItemSmartFormListeners();
 
         // ========== INICIAR ==========
         
