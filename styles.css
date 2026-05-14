@@ -2658,3 +2658,89 @@ body[data-current-page="configuracoes"] #configuracoes.page.active {
         flex-direction: column;
     }
 }
+
+/* PATCH 34 - Edicao e cancelamento de lancamentos */
+.cash-transaction-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.cash-action-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+.cash-edit-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.58);
+}
+
+.cash-edit-card {
+    width: min(760px, 100%);
+    max-height: 92vh;
+    overflow: auto;
+    background: var(--surface, #111827);
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+    border-radius: 8px;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+    padding: 20px;
+}
+
+.cash-edit-header,
+.cash-edit-actions {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.cash-edit-header {
+    margin-bottom: 16px;
+}
+
+.cash-edit-header h3 {
+    margin: 0 0 4px;
+}
+
+.cash-edit-header p {
+    margin: 0;
+    color: var(--text-muted, #7f8c8d);
+}
+
+.cash-edit-warning {
+    margin-bottom: 14px;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    background: rgba(245, 158, 11, 0.12);
+    color: var(--warning, #f59e0b);
+}
+
+.cash-edit-actions {
+    margin-top: 16px;
+    justify-content: flex-end;
+}
+
+@media (max-width: 768px) {
+    .cash-edit-card {
+        padding: 16px;
+    }
+
+    .cash-transaction-actions {
+        justify-content: stretch;
+    }
+
+    .cash-transaction-actions button {
+        flex: 1 1 auto;
+    }
+}

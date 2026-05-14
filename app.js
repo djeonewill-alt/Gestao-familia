@@ -91,7 +91,7 @@
             document.getElementById('mesReferencia').value = thisMonth;
         }
 
-        // ========== PERSISTÃŠNCIA ==========
+        // ========== PERSISTÊNCIA ==========
         function getTodayDateString() {
             return new Date().toISOString().split('T')[0];
         }
@@ -377,7 +377,7 @@ return migrated;
 
         function getDerivedStatus(t) {
             if (t.status === 'confirmado') return 'confirmado';
-            if (t.status === 'cancelado') return 'cancelado';
+            if (t.status === 'cancelado' || t.status === 'cancelled') return 'cancelado';
             if (t.status === 'atrasado') return 'atrasado';
 
             const dataPrevista = t.dataPrevista || t.data;
@@ -538,6 +538,234 @@ function confirmTransaction(id) {
 
             const id = encodeURIComponent(String(t.id));
             return `<button class="success" style="padding: 6px 12px;" onclick="confirmTransaction(decodeURIComponent('${id}'))">Dar baixa</button>`;
+        }
+        function getCashTransactionById(id) {
+            const t = findTransactionById(id);
+            return t && t.tipo === 'dinheiro' ? t : null;
+        }
+
+        function refreshAfterCashTransactionChange() {
+            saveData();
+            updateSemanal();
+            renderTodasTransacoes();
+            if (typeof renderDashboard === 'function') renderDashboard();
+            if (typeof updateFaturas === 'function') updateFaturas();
+        }
+
+        function getCashTransactionActionId(t) {
+            return encodeURIComponent(String(t.id));
+        }
+
+        function getCashTransactionActionsHtml(t) {
+            if (!t || t.tipo !== 'dinheiro' || isTransactionCancelled(t)) return '';
+
+            const id = getCashTransactionActionId(t);
+            const editLabel = t.origem === 'recorrencia-dinheiro' ? 'Editar ocorrência' : 'Editar';
+            const deleteLabel = t.origem === 'recorrencia-dinheiro' ? 'Cancelar ocorrência' : 'Excluir';
+            const confirmButton = getConfirmButtonHtml(t);
+
+            return ` <div class="cash-transaction-actions"> ${confirmButton} <button class="secondary cash-action-btn" onclick="openEditCashTransactionModal(decodeURIComponent('${id}'))">${editLabel}</button> <button class="danger cash-action-btn" onclick="deleteTransacao(decodeURIComponent('${id}'))">${deleteLabel}</button> </div>`;
+        }
+
+        function ensureCashTransactionEditModal() {
+            let modal = document.getElementById('cashTransactionEditModal');
+            if (modal) return modal;
+
+            modal = document.createElement('div');
+            modal.id = 'cashTransactionEditModal';
+            modal.className = 'cash-edit-modal';
+            modal.style.display = 'none';
+            modal.innerHTML = `
+                <div class="cash-edit-card">
+                    <div class="cash-edit-header">
+                        <div>
+                            <h3>Editar lançamento</h3>
+                            <p>Atualize a ocorrência sem perder o histórico do lançamento.</p>
+                        </div>
+                        <button class="secondary cash-action-btn" onclick="closeEditCashTransactionModal()">Fechar</button>
+                    </div>
+                    <div id="cashEditWarning" class="cash-edit-warning" style="display:none;"></div>
+                    <input type="hidden" id="cashEditTransactionId">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Tipo</label>
+                            <select id="cashEditSubTipo">
+                                <option value="entrada">Entrada</option>
+                                <option value="saida">Saída</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Data prevista</label>
+                            <input type="date" id="cashEditDataPrevista">
+                        </div>
+                        <div class="form-group">
+                            <label>Valor previsto (R$)</label>
+                            <input type="number" step="0.01" id="cashEditValorPrevisto">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Descrição</label>
+                        <input type="text" id="cashEditDescricao">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Categoria</label>
+                            <select id="cashEditCategoria"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Responsável</label>
+                            <select id="cashEditResponsavel"></select>
+                        </div>
+                    </div>
+                    <div id="cashEditRealizedFields" style="display:none;">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Data realizada</label>
+                                <input type="date" id="cashEditDataRealizada">
+                            </div>
+                            <div class="form-group">
+                                <label>Valor realizado (R$)</label>
+                                <input type="number" step="0.01" id="cashEditValorRealizado">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Observação</label>
+                        <textarea id="cashEditObservacao" rows="3"></textarea>
+                    </div>
+                    <div class="cash-edit-actions">
+                        <button onclick="saveEditedCashTransaction()">Salvar alterações</button>
+                        <button class="secondary" onclick="closeEditCashTransactionModal()">Cancelar</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(modal);
+            return modal;
+        }
+
+        function fillCashEditSelect(selectId, values, selectedValue) {
+            const select = document.getElementById(selectId);
+            if (!select) return;
+            const selected = selectedValue || '';
+            select.innerHTML = (Array.isArray(values) ? values : []).map(value => {
+                const valueText = String(value || '');
+                return `<option value="${escapeHtml(valueText)}" ${valueText === selected ? 'selected' : ''}>${escapeHtml(valueText)}</option>`;
+            }).join('');
+
+            if (selected && !Array.from(select.options).some(option => option.value === selected)) {
+                const option = document.createElement('option');
+                option.value = selected;
+                option.textContent = selected;
+                option.selected = true;
+                select.appendChild(option);
+            }
+        }
+
+        function openEditCashTransactionModal(id) {
+            const t = getCashTransactionById(id);
+            if (!t) return alert('Lançamento não encontrado.');
+            if (isBalanceAdjustmentTransaction(t)) return alert('Ajuste de saldo não deve ser editado por aqui.');
+            if (isTransactionCancelled(t)) return alert('Lançamento cancelado não pode ser editado.');
+
+            if (isTransactionConfirmed(t) && !confirm('Este lançamento já foi confirmado. Alterar pode mudar saldos e relatórios. Deseja continuar?')) return;
+            if (t.origem === 'fatura' && !confirm('Este lançamento está ligado a uma fatura. Alterar pode mudar o status de Cartões. Deseja continuar?')) return;
+
+            const modal = ensureCashTransactionEditModal();
+            const plannedDate = getTransactionPlannedDate(t) || getTodayDateString();
+            const plannedValue = getTransactionPlannedValue(t);
+            const actualDate = getTransactionActualDate(t) || plannedDate;
+            const actualValue = getTransactionActualValue(t);
+            const confirmed = isTransactionConfirmed(t);
+
+            document.getElementById('cashEditTransactionId').value = String(t.id);
+            document.getElementById('cashEditSubTipo').value = t.subTipo === 'entrada' ? 'entrada' : 'saida';
+            document.getElementById('cashEditDescricao').value = t.descricao || '';
+            document.getElementById('cashEditDataPrevista').value = plannedDate || '';
+            document.getElementById('cashEditValorPrevisto').value = Number(plannedValue || 0).toFixed(2);
+            document.getElementById('cashEditObservacao').value = t.observacao || '';
+            document.getElementById('cashEditDataRealizada').value = actualDate || '';
+            document.getElementById('cashEditValorRealizado').value = Number(actualValue || 0).toFixed(2);
+
+            fillCashEditSelect('cashEditCategoria', data.categorias, t.categoria || 'Outros');
+            fillCashEditSelect('cashEditResponsavel', data.responsaveis, t.responsavel || 'Meu');
+
+            const warning = document.getElementById('cashEditWarning');
+            const realizedFields = document.getElementById('cashEditRealizedFields');
+            if (confirmed) {
+                warning.style.display = 'block';
+                warning.textContent = 'Este lançamento já foi confirmado. Alterações mudam saldos e relatórios.';
+                realizedFields.style.display = 'block';
+            } else {
+                warning.style.display = t.origem === 'recorrencia-dinheiro' ? 'block' : 'none';
+                warning.textContent = t.origem === 'recorrencia-dinheiro' ? 'Esta é uma ocorrência de recorrência. A edição altera apenas esta ocorrência.' : '';
+                realizedFields.style.display = 'none';
+            }
+
+            modal.style.display = 'flex';
+        }
+
+        function closeEditCashTransactionModal() {
+            const modal = document.getElementById('cashTransactionEditModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function saveEditedCashTransaction() {
+            const id = document.getElementById('cashEditTransactionId')?.value;
+            const t = getCashTransactionById(id);
+            if (!t) return alert('Lançamento não encontrado.');
+            if (isBalanceAdjustmentTransaction(t)) return alert('Ajuste de saldo não deve ser editado por aqui.');
+            if (isTransactionCancelled(t)) return alert('Lançamento cancelado não pode ser editado.');
+
+            const wasConfirmed = isTransactionConfirmed(t);
+            if (wasConfirmed && !confirm('Este lançamento já foi confirmado. Salvar alterações pode mudar saldos e relatórios. Deseja continuar?')) return;
+
+            const subTipo = document.getElementById('cashEditSubTipo')?.value === 'entrada' ? 'entrada' : 'saida';
+            const descricao = document.getElementById('cashEditDescricao')?.value.trim();
+            const categoria = document.getElementById('cashEditCategoria')?.value;
+            const responsavel = document.getElementById('cashEditResponsavel')?.value;
+            const dataPrevista = document.getElementById('cashEditDataPrevista')?.value;
+            const valorPrevisto = parseCurrencyInput(document.getElementById('cashEditValorPrevisto')?.value);
+            const observacao = document.getElementById('cashEditObservacao')?.value.trim() || '';
+
+            if (!descricao || !categoria || !responsavel || !dataPrevista || !/^\d{4}-\d{2}-\d{2}$/.test(dataPrevista)) {
+                return alert('Preencha descrição, categoria, responsável e data prevista válida.');
+            }
+            if (!Number.isFinite(valorPrevisto) || valorPrevisto < 0) {
+                return alert('Valor previsto inválido.');
+            }
+
+            t.subTipo = subTipo;
+            t.descricao = descricao;
+            t.categoria = categoria;
+            t.responsavel = responsavel;
+            t.observacao = observacao;
+            t.data = dataPrevista;
+            t.valor = valorPrevisto;
+            t.dataPrevista = dataPrevista;
+            t.valorPrevisto = valorPrevisto;
+            t.updatedAt = new Date().toISOString();
+
+            if (wasConfirmed) {
+                const dataRealizada = document.getElementById('cashEditDataRealizada')?.value;
+                const valorRealizado = parseCurrencyInput(document.getElementById('cashEditValorRealizado')?.value);
+                if (!dataRealizada || !/^\d{4}-\d{2}-\d{2}$/.test(dataRealizada)) return alert('Data realizada inválida.');
+                if (!Number.isFinite(valorRealizado) || valorRealizado < 0) return alert('Valor realizado inválido.');
+                t.status = 'confirmado';
+                t.realizado = true;
+                t.dataRealizada = dataRealizada;
+                t.valorRealizado = valorRealizado;
+                if (!t.confirmedAt) t.confirmedAt = new Date().toISOString();
+                syncInvoiceStatusFromPaymentTransaction(t);
+            } else {
+                t.status = 'previsto';
+                t.realizado = false;
+                t.dataRealizada = null;
+                t.valorRealizado = null;
+                t.confirmedAt = null;
+            }
+
+            refreshAfterCashTransactionChange();
+            closeEditCashTransactionModal();
+            alert('Lançamento atualizado.');
         }
 
         function parseCurrencyInput(value) {
@@ -1634,12 +1862,46 @@ function getFirstInvoiceMonthForPurchase(card, purchaseDate) {
         }
 
         function deleteTransacao(id) {
-            if (confirm('Excluir este lançamento?')) {
-                data.transacoes = data.transacoes.filter(t => t.id !== id);
-                saveData();
-                updateSemanal();
-                renderTodasTransacoes();
+            const t = findTransactionById(id);
+            if (!t) return alert('Lançamento não encontrado.');
+
+            if (t.tipo !== 'dinheiro') {
+                if (confirm('Excluir este item antigo?')) {
+                    data.transacoes = data.transacoes.filter(item => String(item.id) !== String(id));
+                    refreshAfterCashTransactionChange();
+                }
+                return;
             }
+
+            if (isBalanceAdjustmentTransaction(t)) {
+                return alert('Ajuste de saldo não pode ser excluído por aqui.');
+            }
+
+            if (isTransactionCancelled(t)) {
+                return alert('Este lançamento já está cancelado.');
+            }
+
+            const recurringText = t.origem === 'recorrencia-dinheiro'
+                ? ' Esta ocorrência de recorrência será cancelada e não será recriada automaticamente.'
+                : '';
+
+            if (isTransactionConfirmed(t)) {
+                if (!confirm('Este lançamento já foi confirmado. Cancelar pode mudar saldos e relatórios. Deseja continuar?' + recurringText)) return;
+            } else if (!confirm('Excluir este lançamento? Ele será marcado como cancelado.' + recurringText)) {
+                return;
+            }
+
+            const wasConfirmed = isTransactionConfirmed(t);
+            const now = new Date().toISOString();
+            t.status = 'cancelado';
+            t.cancelledAt = now;
+            t.updatedAt = now;
+            if (!wasConfirmed) {
+                t.realizado = false;
+            }
+
+            refreshAfterCashTransactionChange();
+            alert('Lançamento cancelado.');
         }
 
         function renderTodasTransacoes() {
@@ -1654,14 +1916,14 @@ function getFirstInvoiceMonthForPurchase(card, purchaseDate) {
             const html = sorted.map(t => {
                 if (t.tipo === 'dinheiro') {
                     const statusBadge = getStatusBadgeHtml(t);
-                    const confirmButton = getConfirmButtonHtml(t);
+                    const actionsHtml = getCashTransactionActionsHtml(t);
                     const valorExibicao = isTransactionConfirmed(t) ? getTransactionActualValue(t) : getTransactionPlannedValue(t);
                     const dataExibicao = isTransactionConfirmed(t) ? (getTransactionActualDate(t) || getTransactionPlannedDate(t)) : getTransactionPlannedDate(t);
 
                     return ` <div class="transaction-item"> <div class="transaction-info"> <div class="transaction-description"> ${t.descricao} <span class="badge cat">${t.categoria}</span> <span class="badge resp">${t.responsavel}</span> ${statusBadge}
-                                    ${getRecurringCashBadgeHtml(t)} </div> <div class="transaction-meta">${formatDate(dataExibicao || t.data)}</div> </div> <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end;"> <div class="transaction-amount ${t.subTipo === 'entrada' ? 'income' : 'expense'}"> ${t.subTipo === 'entrada' ? '+' : '-'} ${formatCurrency(valorExibicao)} </div> ${confirmButton} <button class="danger" style="padding: 6px 12px;" onclick="deleteTransacao(${t.id})">???</button> </div> </div> `;
+                                    ${getRecurringCashBadgeHtml(t)} </div> <div class="transaction-meta">${formatDate(dataExibicao || t.data)}</div> </div> <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end;"> <div class="transaction-amount ${t.subTipo === 'entrada' ? 'income' : 'expense'}"> ${t.subTipo === 'entrada' ? '+' : '-'} ${formatCurrency(valorExibicao)} </div> ${actionsHtml} </div> </div> `;
                 } else {
-                    return ` <div class="transaction-item"> <div class="transaction-info"> <div class="transaction-description"> ???? ${t.descricao} <span class="badge">${t.cartaoNome}</span> <span class="badge">${t.numParcelas}x</span> </div> <div class="transaction-meta">${formatDate(t.data)} - ${t.categoria} - ${t.responsavel}</div> </div> <div style="display: flex; align-items: center; gap: 10px;"> <div class="transaction-amount expense"> ${formatCurrency(t.valorTotal)} </div> <button class="danger" style="padding: 6px 12px;" onclick="deleteTransacao(${t.id})">???</button> </div> </div> `;
+                    return ` <div class="transaction-item"> <div class="transaction-info"> <div class="transaction-description"> Cartao ${t.descricao} <span class="badge">${t.cartaoNome}</span> <span class="badge">${t.numParcelas}x</span> </div> <div class="transaction-meta">${formatDate(t.data)} - ${t.categoria} - ${t.responsavel}</div> </div> <div style="display: flex; align-items: center; gap: 10px;"> <div class="transaction-amount expense"> ${formatCurrency(t.valorTotal)} </div> <button class="danger" style="padding: 6px 12px;" onclick="deleteTransacao(${t.id})">Excluir</button> </div> </div> `;
                 }
             }).join('');
 
@@ -1782,12 +2044,12 @@ function getFirstInvoiceMonthForPurchase(card, purchaseDate) {
 
             const html = sorted.map(t => {
                 const statusBadge = getStatusBadgeHtml(t);
-                const confirmButton = getConfirmButtonHtml(t);
+                const actionsHtml = getCashTransactionActionsHtml(t);
                 const dataExibicao = isTransactionConfirmed(t) ? (getTransactionActualDate(t) || getTransactionPlannedDate(t)) : getTransactionPlannedDate(t);
                 const valorExibicao = isTransactionConfirmed(t) ? getTransactionActualValue(t) : getTransactionPlannedValue(t);
 
                 return ` <div class="transaction-item"> <div class="transaction-info"> <div class="transaction-description"> ${t.descricao} <span class="badge cat">${t.categoria}</span> ${statusBadge}
-                                ${getRecurringCashBadgeHtml(t)} </div> <div class="transaction-meta">${formatDate(dataExibicao || t.data)} - ${t.responsavel}</div> </div> <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end;"> <div class="transaction-amount ${t.subTipo === 'entrada' ? 'income' : 'expense'}"> ${t.subTipo === 'entrada' ? '+' : '-'} ${formatCurrency(valorExibicao)} </div> ${confirmButton} </div> </div> `;
+                                ${getRecurringCashBadgeHtml(t)} </div> <div class="transaction-meta">${formatDate(dataExibicao || t.data)} - ${t.responsavel}</div> </div> <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end;"> <div class="transaction-amount ${t.subTipo === 'entrada' ? 'income' : 'expense'}"> ${t.subTipo === 'entrada' ? '+' : '-'} ${formatCurrency(valorExibicao)} </div> ${actionsHtml} </div> </div> `;
             }).join('');
 
             container.innerHTML = html;
