@@ -2911,6 +2911,70 @@ function getInvoiceMonthDueLabel(monthRef) {
     return formatDate(getInvoicePaymentDueDate(card, monthRef));
 }
 
+function getInvoiceDashboardSummary() {
+    const selected = getSelectedInvoiceMonthRef();
+    const next = addMonthsToMonthRef(selected, 1);
+    const months = getInvoiceMonthOverviewRange(12);
+    const selectedTotal = calculateInvoiceTotalForMonth(selected);
+    const nextTotal = next ? calculateInvoiceTotalForMonth(next) : 0;
+    const totalPeriod = months.reduce((sum, monthRef) => sum + calculateInvoiceTotalForMonth(monthRef), 0);
+    const openInvoices = (data.cardInvoices || []).filter(invoice => invoice.status !== 'paga').length;
+    const activeRecurring = (data.cardRecurringItems || []).filter(item => item.status === 'active').length;
+
+    return {
+        selected,
+        next,
+        selectedTotal,
+        nextTotal,
+        totalPeriod,
+        openInvoices,
+        activeRecurring
+    };
+}
+
+function setCardAddItemPanelOpen(open) {
+    const panel = document.getElementById('cardItemPreview')?.closest('.section');
+    if (!panel) return;
+    panel.classList.toggle('card-add-item-panel-open', Boolean(open));
+    const button = document.getElementById('cardAddItemToggleButton');
+    if (button) button.textContent = open ? 'Fechar formulario' : 'Adicionar item';
+}
+
+function toggleCardAddItemPanel(forceOpen) {
+    const panel = document.getElementById('cardItemPreview')?.closest('.section');
+    if (!panel) return;
+    const shouldOpen = typeof forceOpen === 'boolean'
+        ? forceOpen
+        : !panel.classList.contains('card-add-item-panel-open');
+    setCardAddItemPanelOpen(shouldOpen);
+    if (shouldOpen) {
+        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+function ensureCardAddItemPanelHeader() {
+    const panel = document.getElementById('cardItemPreview')?.closest('.section');
+    if (!panel || panel.querySelector('.card-add-item-panel-header')) return;
+
+    const heading = panel.querySelector('h2');
+    const header = document.createElement('div');
+    header.className = 'card-add-item-panel-header';
+    header.innerHTML = `
+        <div>
+            <h2>Adicionar item na fatura</h2>
+            <p>Lance compras, parcelas em andamento e recorrentes no cartao.</p>
+        </div>
+        <button class="secondary" type="button" onclick="toggleCardAddItemPanel(false)">Recolher</button>
+    `;
+
+    if (heading) {
+        heading.parentNode.insertBefore(header, heading);
+        heading.remove();
+    } else {
+        panel.insertBefore(header, panel.firstChild);
+    }
+}
+
 function ensureCardInvoiceManagementPanels() {
     const page = document.getElementById('cartoes');
     if (!page) return;
@@ -2940,6 +3004,11 @@ function ensureCardInvoiceManagementPanels() {
     if (addItemSection && addItemSection.parentNode === page) {
         page.insertBefore(addItemSection, detail.nextSibling);
         addItemSection.classList.add('card-add-item-panel');
+        ensureCardAddItemPanelHeader();
+        if (!addItemSection.classList.contains('card-add-item-panel-ready')) {
+            addItemSection.classList.add('card-add-item-panel-ready');
+            addItemSection.classList.remove('card-add-item-panel-open');
+        }
     }
 
     if (cardManageSection && cardManageSection.parentNode === page) {
@@ -2969,12 +3038,44 @@ function renderCardInvoicesMonthOverview() {
         due: getInvoiceMonthDueLabel(monthRef)
     }));
     const max = Math.max(1, ...rows.map(row => row.total));
+    const summary = getInvoiceDashboardSummary();
 
     container.innerHTML = `
+        <div class="invoice-dashboard-hero">
+            <div>
+                <h2>Gestao de faturas</h2>
+                <p>Escolha um mes, confira os itens e gere o pagamento da fatura.</p>
+            </div>
+            <button id="cardAddItemToggleButton" class="invoice-primary-action" type="button" onclick="toggleCardAddItemPanel()">Adicionar item</button>
+        </div>
+
+        <div class="invoice-summary-cards">
+            <div class="invoice-summary-card">
+                <span>Fatura selecionada</span>
+                <strong>${formatCurrency(summary.selectedTotal)}</strong>
+                <small>${getInvoiceMonthLabel(summary.selected)}</small>
+            </div>
+            <div class="invoice-summary-card">
+                <span>Proxima fatura</span>
+                <strong>${formatCurrency(summary.nextTotal)}</strong>
+                <small>${summary.next ? getInvoiceMonthLabel(summary.next) : '-'}</small>
+            </div>
+            <div class="invoice-summary-card">
+                <span>Proximos 12 meses</span>
+                <strong>${formatCurrency(summary.totalPeriod)}</strong>
+                <small>Total projetado</small>
+            </div>
+            <div class="invoice-summary-card">
+                <span>Recorrentes</span>
+                <strong>${summary.activeRecurring}</strong>
+                <small>Ativas no cartao</small>
+            </div>
+        </div>
+
         <div class="invoice-panel-heading">
             <div>
-                <h2>Faturas por mes</h2>
-                <p>Clique em um mes para abrir o detalhe da fatura.</p>
+                <h3>Faturas por mes</h3>
+                <p>Clique em uma barra para abrir o detalhe.</p>
             </div>
         </div>
         <div class="invoice-month-bars">
@@ -3041,19 +3142,21 @@ function renderSelectedInvoiceDetail() {
     container.innerHTML = `
         <div class="selected-invoice-header">
             <div>
-                <h2>Detalhe da fatura selecionada</h2>
-                <p>${getInvoiceMonthLabel(monthRef)}${cycle ? ' - ' + cycle.label : ''}</p>
+                <span class="invoice-section-kicker">Fatura selecionada</span>
+                <h2>${getInvoiceMonthLabel(monthRef)}</h2>
+                <p>${cycle ? cycle.label : 'Selecione um cartao para ver ciclo e vencimento.'}</p>
             </div>
             <div class="selected-invoice-total">
                 <span>Total geral</span>
                 <strong>${formatCurrency(summary.total)}</strong>
+                <small>${summary.items.length} item(ns)</small>
             </div>
         </div>
 
         <div class="selected-invoice-summary">
             <div><span>Mes</span><strong>${monthRef}</strong></div>
             <div><span>Status geral</span><strong>${getInvoiceMonthStatusSummary(monthRef)}</strong></div>
-            <div><span>Itens</span><strong>${summary.items.length}</strong></div>
+            <div><span>Cartoes</span><strong>${Object.keys(summary.byCard).length}</strong></div>
         </div>
 
         <div class="selected-invoice-breakdowns">
@@ -3071,6 +3174,10 @@ function renderSelectedInvoiceDetail() {
             ${cards.map(card => renderInvoiceCardActions(card, monthRef)).join('')}
         </div>
 
+        <div class="selected-invoice-items-heading">
+            <h3>Itens da fatura</h3>
+            <span>${summary.items.length} lancamento(s)</span>
+        </div>
         <div class="selected-invoice-items">
             ${summary.items.map(item => renderSelectedInvoiceItemRow(item)).join('') || '<div class="empty-state">Nenhum item nesta fatura.</div>'}
         </div>
@@ -3106,17 +3213,23 @@ function renderInvoiceCardActions(card, monthRef) {
 function renderSelectedInvoiceItemRow(item) {
     const canEdit = item.sourceType === 'cardItem' || item.sourceType === 'cardRecurringItem';
     const editAction = canEdit
-        ? `<button class="secondary" onclick="openEditInvoiceItemModal('${item.sourceType}', '${String(item.itemId)}', '${item.monthRef}')">Editar</button>`
-        : `<button class="secondary" onclick="openEditInvoiceItemModal('${item.sourceType}', '${String(item.itemId)}', '${item.monthRef}')">Ver aviso</button>`;
+        ? `<button class="secondary invoice-mini-button" onclick="openEditInvoiceItemModal('${item.sourceType}', '${String(item.itemId)}', '${item.monthRef}')">Editar</button>`
+        : `<button class="secondary invoice-mini-button" onclick="openEditInvoiceItemModal('${item.sourceType}', '${String(item.itemId)}', '${item.monthRef}')">Ver aviso</button>`;
     const cancelAction = canEdit
-        ? `<button class="danger" onclick="cancelInvoiceItem('${item.sourceType}', '${String(item.itemId)}', '${item.monthRef}')">Cancelar</button>`
-        : `<button class="danger" onclick="cancelInvoiceItem('${item.sourceType}', '${String(item.itemId)}', '${item.monthRef}')">Cancelar</button>`;
+        ? `<button class="danger invoice-mini-button" onclick="cancelInvoiceItem('${item.sourceType}', '${String(item.itemId)}', '${item.monthRef}')">Cancelar</button>`
+        : `<button class="danger invoice-mini-button" onclick="cancelInvoiceItem('${item.sourceType}', '${String(item.itemId)}', '${item.monthRef}')">Cancelar</button>`;
 
     return `
         <div class="selected-invoice-item">
-            <div>
+            <div class="selected-invoice-item-main">
                 <strong>${escapeHtml(item.descricao || 'Item')}</strong>
-                <div class="invoice-muted">${escapeHtml(item.cardName || 'Cartao')} - ${escapeHtml(item.parcela || '-')} - ${escapeHtml(item.categoria || 'Sem categoria')} - ${escapeHtml(item.responsavel || 'Sem responsavel')} - ${escapeHtml(item.origemLabel || item.origem || 'Item')}</div>
+                <div class="invoice-item-tags">
+                    <span>${escapeHtml(item.cardName || 'Cartao')}</span>
+                    <span>${escapeHtml(item.parcela || '-')}</span>
+                    <span>${escapeHtml(item.categoria || 'Sem categoria')}</span>
+                    <span>${escapeHtml(item.responsavel || 'Sem responsavel')}</span>
+                    <span>${escapeHtml(item.origemLabel || item.origem || 'Item')}</span>
+                </div>
             </div>
             <div class="selected-invoice-item-side">
                 <strong>${formatCurrency(Number(item.valor) || 0)}</strong>

@@ -2436,3 +2436,225 @@ body[data-current-page="configuracoes"] #configuracoes.page.active {
         justify-content: flex-start;
     }
 }
+
+/* PATCH 33 - Cartoes como dashboard */
+.invoice-month-overview {
+    overflow: hidden;
+}
+
+.invoice-dashboard-hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.invoice-dashboard-hero h2 {
+    margin-bottom: 4px;
+}
+
+.invoice-dashboard-hero p {
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.invoice-primary-action {
+    min-width: 160px;
+    font-weight: 800;
+    box-shadow: 0 12px 28px rgba(96, 165, 250, 0.22);
+}
+
+.invoice-summary-cards {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.invoice-summary-card {
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    background: rgba(15, 23, 42, 0.52);
+}
+
+.invoice-summary-card span,
+.invoice-summary-card small,
+.selected-invoice-total small,
+.invoice-section-kicker,
+.selected-invoice-items-heading span {
+    display: block;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.invoice-summary-card strong {
+    display: block;
+    margin: 6px 0 2px;
+    font-size: 22px;
+}
+
+.invoice-panel-heading h3,
+.selected-invoice-items-heading h3 {
+    margin: 0;
+}
+
+.invoice-month-bars {
+    align-items: stretch;
+}
+
+.invoice-month-card {
+    position: relative;
+    min-height: 132px;
+    transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+
+.invoice-month-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(96, 165, 250, 0.45);
+}
+
+.invoice-month-card.active {
+    background: rgba(37, 99, 235, 0.18);
+}
+
+.invoice-month-bar {
+    height: 10px;
+}
+
+.selected-invoice-detail {
+    padding-top: 22px;
+}
+
+.invoice-section-kicker {
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0;
+    font-weight: 800;
+}
+
+.selected-invoice-summary > div,
+.selected-invoice-breakdowns > div,
+.invoice-card-actions,
+.selected-invoice-item {
+    background: rgba(15, 23, 42, 0.50);
+}
+
+.selected-invoice-items-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.selected-invoice-item {
+    align-items: center;
+}
+
+.selected-invoice-item-main {
+    min-width: 220px;
+    flex: 1;
+}
+
+.invoice-item-tags {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 7px;
+}
+
+.invoice-item-tags span {
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 999px;
+    padding: 3px 8px;
+    color: var(--text-muted);
+    font-size: 11px;
+}
+
+.invoice-mini-button {
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+}
+
+.card-add-item-panel {
+    display: none;
+}
+
+.card-add-item-panel.card-add-item-panel-open {
+    display: block;
+}
+
+.card-add-item-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.card-add-item-panel-header h2 {
+    margin-bottom: 4px;
+}
+
+.card-add-item-panel-header p {
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.legacy-invoice-panel {
+    display: none !important;
+}
+
+.card-management-panel {
+    opacity: 0.84;
+}
+
+@media (max-width: 900px) {
+    .invoice-summary-cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .invoice-dashboard-hero,
+    .card-add-item-panel-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .invoice-primary-action {
+        position: sticky;
+        top: 8px;
+        z-index: 20;
+        width: 100%;
+    }
+
+    .invoice-summary-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .invoice-month-bars {
+        display: flex;
+        gap: 10px;
+        overflow-x: auto;
+        padding-bottom: 8px;
+        scroll-snap-type: x mandatory;
+    }
+
+    .invoice-month-card {
+        min-width: 210px;
+        scroll-snap-align: start;
+    }
+
+    .selected-invoice-summary,
+    .selected-invoice-breakdowns {
+        grid-template-columns: 1fr;
+    }
+
+    .selected-invoice-item {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}
